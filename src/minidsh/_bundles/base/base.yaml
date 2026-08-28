@@ -1,0 +1,20 @@
+# 内置 base 清单（随包分发，对齐官方 bundle 声明式）。
+# 这份是「激活哪些插件」的声明；实现是 plugins/ 下的静态模块 + capabilities 下的 shell/fs/tool。
+plugins:
+  - minidsh.config
+  - minidsh.root
+  - minidsh.sessions
+  - minidsh.prompt
+  - minidsh.tools
+  - minidsh.llm-openai
+  - minidsh.shell-local
+  - minidsh.fs-local
+  - minidsh.tool-bash
+  - minidsh.tool-read
+  - minidsh.skills
+  - minidsh.subagents
+  - minidsh.agents-md
+  - minidsh.loop
+  - minidsh.compaction
+  - minidsh.trace-render
+  - minidsh.persistence

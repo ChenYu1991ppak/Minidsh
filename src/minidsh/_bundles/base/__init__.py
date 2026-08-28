@@ -1,11 +1,13 @@
-"""minidsh 内置 base 插件包：把 harness 能力模块化为「具名插件」。
+"""内置 base 插件包（对官方「bundle = 数据 + 静态插件」）。
 
-每个插件是 module 形态（模块级 name/inject/apply），由内置 base 清单声明激活。
-base 插件需要项目级配置（root/cfg/llm_client），故用工厂函数按配置生成；第三方
-插件（纯 module）走 entry-point 直发现。
+- ``base.yaml``：内置激活清单（声明「激活哪些插件」）
+- ``plugins/``：17 个静态 module 插件（name/inject/apply，读 ctx.config/ctx.root）
+- ``registry.py``：内置插件名 → module 的静态映射（供 loader 的 resolver 基线）
+
+config / root 是两个带 ``SET`` 槽的运行时值插件，loader 在装配前注入。
 """
 from __future__ import annotations
 
-from .plugins import build_base_plugins, base_manifest
+from .registry import builtin_registry
 
-__all__ = ["build_base_plugins", "base_manifest"]
+__all__ = ["builtin_registry"]
