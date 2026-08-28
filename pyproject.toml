@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "minidsh"
+dynamic = ["version"]
+description = "最小化 DeepSeek Harness（dsh）：cordis 内核 + agent-loop + tools/skills/subagent/compaction，全程可观测"
+requires-python = ">=3.11"
+dependencies = ["openai>=1.0", "pyyaml>=6.0"]
+
+[project.optional-dependencies]
+test = ["pytest>=7", "pytest-asyncio", "pytest-cov"]
+
+[project.scripts]
+minidsh = "minidsh.workspace.cli:main"
+
+[tool.hatch.version]
+path = "src/minidsh/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/minidsh"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"

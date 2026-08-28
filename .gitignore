@@ -1,0 +1,28 @@
+# 提交与运行时产生的文件一律不进库
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# 会话落盘产物（示例/测试生成）
+.dsh/
+
+# 敏感信息（spec §9 Never：绝不提交 secrets / API key）
+# models.json 内嵌明文 apiKey，永不提交；仓库只 add models.json.example 模板。
+# settings.json 非密（storage/compaction/tools），可提交共享。
+.minidsh/models.json
+.env
+*.key
+
+# 工具链本地缓存
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# 参考仓库：独立 git 仓库，只读，永不修改/提交
+deepseek-harness-anatomy/
