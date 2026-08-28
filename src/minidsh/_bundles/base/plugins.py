@@ -1,10 +1,11 @@
 """内置 base 插件工厂表与 base 清单。
 
-11 个具名插件（对应 SPEC-manifest §2.4），split 自原 loader 的 9 处硬编码装配。
+16 个具名插件（对应 SPEC-manifest §2.4 + shell/fs 三拆），split 自原 loader 的硬编码装配。
 每个插件经 ``factory(root, cfg, ...)`` 生成 module 形态的插件（name/inject/apply）。
 
 依赖方向（inject 声明，非书写顺序）：
-    sessions / llm / prompt / tools（无依赖）
+    config / sessions / llm / prompt / tools（无依赖）
+    shell / fs（provider）；tool-bash / tool-read（inject tools+shell/fs+config）
     skills+subagents（inject tools）；agents-md（inject systemPrompt）
     loop（inject sessions/llm/systemPrompt/tools）
     compaction（inject sessions/llm）；trace-render / persistence（inject sessions）
@@ -15,20 +16,23 @@ import types
 from pathlib import Path
 from typing import Any, Callable
 
-from ...config import Config
-from ...session import SessionStore
-from ...session.persistence import PersistenceCoordinator
-from ...session.persistence_jsonl import JsonlSessionPersistence
-from ...session.persistence_sqlite import SqliteSessionPersistence
-from ...llm import OpenAILlm
-from ...prompt import SystemPromptService
-from ...tools import ToolRuntime
-from ...tools import shell_local, fs_local, tool_bash, tool_read
-from ...skills import FilesystemSkillProvider, SkillRegistry, make_catalog_tool
-from ...subagent import SubagentRegistry, InProcessSubagentProvider, make_task_tool
-from ...loop import AgentLoop
-from ...compaction import CompactionEngine
-from ...trace import ConsoleRenderer
+from ...infrastructure.config import Config
+from ...capabilities.session import SessionStore
+from ...capabilities.session.persistence import PersistenceCoordinator
+from ...capabilities.session.providers.jsonl import JsonlSessionPersistence
+from ...capabilities.session.providers.sqlite import SqliteSessionPersistence
+from ...capabilities.llm.providers.openai import OpenAILlm
+from ...capabilities.prompt import SystemPromptService
+from ...capabilities.tools import ToolRuntime
+from ...capabilities.shell.providers import local as shell_provider
+from ...capabilities.fs.providers import local as fs_provider
+from ...capabilities.shell.tools import bash as tool_bash
+from ...capabilities.fs.tools import read_file as tool_read
+from ...capabilities.skills import FilesystemSkillProvider, SkillRegistry, make_catalog_tool
+from ...capabilities.subagent import SubagentRegistry, InProcessSubagentProvider, make_task_tool
+from ...applications.loop import AgentLoop
+from ...capabilities.compaction import CompactionEngine
+from ...applications.trace import ConsoleRenderer
 
 __all__ = ["build_base_plugins", "base_manifest"]
 
@@ -97,9 +101,9 @@ def build_base_plugins(root: Path, cfg: Config, llm_client: Any, quiet: bool) ->
         "minidsh.llm": _module("minidsh.llm", [], lambda ctx: ctx.provide("llm", _build_llm(cfg, llm_client))),
         "minidsh.prompt": _module("minidsh.prompt", [], lambda ctx: ctx.provide("systemPrompt", SystemPromptService(ctx))),
 
-        "minidsh.tools": _module("minidsh.tools", [], lambda ctx: ToolRuntime(ctx)),
-        "minidsh.shell": shell_local,
-        "minidsh.fs": fs_local,
+        "minidsh.tools": _module("minidsh.tools", [], lambda ctx: _apply_tools(ctx, cfg)),
+        "minidsh.shell": shell_provider,
+        "minidsh.fs": fs_provider,
         "minidsh.tool-bash": tool_bash,
         "minidsh.tool-read": tool_read,
         "minidsh.skills": _module("minidsh.skills", ["tools"], lambda ctx: _apply_skills(ctx, root)),
