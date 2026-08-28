@@ -21,7 +21,7 @@ from ...capabilities.session import SessionStore
 from ...capabilities.session.persistence import PersistenceCoordinator
 from ...capabilities.session.providers.jsonl import JsonlSessionPersistence
 from ...capabilities.session.providers.sqlite import SqliteSessionPersistence
-from ...capabilities.llm.providers.openai import OpenAILlm
+from ...capabilities.llm.providers import openai as llm_openai
 from ...capabilities.prompt import SystemPromptService
 from ...capabilities.tools import ToolRuntime
 from ...capabilities.shell.providers import local as shell_provider
@@ -44,21 +44,6 @@ def _module(name: str, inject: list[str], apply: Callable[[Any], None]) -> types
     mod.inject = inject
     mod.apply = apply
     return mod
-
-
-def _build_llm(cfg: Config, llm_client: Any):
-    model = cfg.current
-    if model is None:
-        raise RuntimeError(
-            "未配置可用模型：请在 models.json 的 models[] 里至少提供一个模型，"
-            "并用 currentModel 或 availableModels 指定当前模型"
-        )
-    if not model.url:
-        raise RuntimeError(
-            f"模型 {model.id!r} 未配置 url（OpenAI 兼容 base_url）：该模型不可用。"
-            "请在 models.json 里为该模型填写 url 字段。"
-        )
-    return OpenAILlm(model=model.id, api_key=model.api_key or None, base_url=model.url, client=llm_client)
 
 
 def _parse_agent_md(text: str) -> tuple[str, str, str] | None:
@@ -94,16 +79,20 @@ def _load_agents(root: Path, subagents: SubagentRegistry):
 
 
 def build_base_plugins(root: Path, cfg: Config, llm_client: Any, quiet: bool) -> dict[str, object]:
-    """按配置生成全部内置 base 插件（name → module 形态插件）。"""
+    """按配置生成全部内置 base 插件（name → module 形态插件）。
+
+    注：``llm_client`` 参数保留向后兼容（现阶段仅用于测试注入；llm 三拆完成后将删除）。
+    """
     return {
         "minidsh.config": _module("minidsh.config", [], lambda ctx: ctx.provide("config", cfg)),
         "minidsh.sessions": _module("minidsh.sessions", [], lambda ctx: ctx.provide("sessions", SessionStore(ctx))),
-        "minidsh.llm": _module("minidsh.llm", [], lambda ctx: ctx.provide("llm", _build_llm(cfg, llm_client))),
+        "minidsh.llm": llm_openai if llm_client is None else _module(
+            "minidsh.llm", [], lambda ctx: ctx.provide("llm", _build_test_llm(cfg, llm_client))),
         "minidsh.prompt": _module("minidsh.prompt", [], lambda ctx: ctx.provide("systemPrompt", SystemPromptService(ctx))),
 
         "minidsh.tools": _module("minidsh.tools", [], lambda ctx: _apply_tools(ctx, cfg)),
-        "minidsh.shell": shell_provider,
-        "minidsh.fs": fs_provider,
+        "minidsh.shell-local": shell_provider,
+        "minidsh.fs-local": fs_provider,
         "minidsh.tool-bash": tool_bash,
         "minidsh.tool-read": tool_read,
         "minidsh.skills": _module("minidsh.skills", ["tools"], lambda ctx: _apply_skills(ctx, root)),
@@ -126,6 +115,17 @@ def build_base_plugins(root: Path, cfg: Config, llm_client: Any, quiet: bool) ->
 def _apply_tools(ctx, cfg: Config):
     # minidsh.tools 现在只提供空 ToolRuntime；bash/read_file 由 consumer 插件注册。
     ToolRuntime(ctx)
+
+
+def _build_test_llm(cfg: Config, llm_client: Any):
+    """仅测试注入路径（llm_client 非空时）：用假 client 构造 OpenAILlm。
+
+    Phase E 完成后此路径随 llm_client 参数一并删除；假 llm 改走 `tests/helpers/fake_llm` provider。
+    """
+    from ...capabilities.llm.providers.openai import OpenAILlm
+
+    model = cfg.current
+    return OpenAILlm(model=model.id if model else "test", client=llm_client)
 
 
 def _apply_skills(ctx, root: Path):
@@ -169,8 +169,8 @@ base_manifest = [
     {"name": "minidsh.llm"},
     {"name": "minidsh.prompt"},
     {"name": "minidsh.tools"},
-    {"name": "minidsh.shell"},
-    {"name": "minidsh.fs"},
+    {"name": "minidsh.shell-local"},
+    {"name": "minidsh.fs-local"},
     {"name": "minidsh.tool-bash"},
     {"name": "minidsh.tool-read"},
     {"name": "minidsh.skills"},

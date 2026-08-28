@@ -11,7 +11,7 @@ from ..definition import ShellRequest, ShellResult, ShellService
 
 __all__ = ["LocalShellService"]
 
-name = "minidsh.shell"
+name = "minidsh.shell-local"
 inject = []
 
 

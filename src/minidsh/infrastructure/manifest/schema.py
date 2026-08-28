@@ -2,14 +2,20 @@
 
 对齐官方 cordis.yml overlay 的「声明装配、非硬编码」语义（Python 版，manifest.yaml）。
 
-清单 schema（SPEC-manifest §2.1）：
+清单 schema：
     plugins:
       - name: minidsh.sessions
       - name: my-third-party-plugin
         config: { threshold: 0.8 }
+    remove:                      # 顶层键，全局移除（最强优先级）
+      - minidsh.shell-local
 
-层叠（§2.2，后层 win per row）：
+层叠（后层 win per row）：
     内置默认 ← 项目 .minidsh/manifest.yaml ← 用户 ~/.minidsh/manifest.yaml ← argv --manifest
+
+``remove`` 语义（SPEC-provider-select §2.2）：各层 plugins 合并完成后，凡 name 命中
+任一层的 ``remove`` 列表，一律从最终结果剔除。用于「不激活 base 默认 provider」，
+配合 plugins 追加替代 provider 完成「换 provider 只改清单」。
 """
 from __future__ import annotations
 
@@ -19,7 +25,7 @@ from typing import Any, Callable
 
 import yaml
 
-__all__ = ["ManifestEntry", "load_manifest", "merge_manifests"]
+__all__ = ["ManifestEntry", "load_manifest", "merge_manifests", "parse_manifest"]
 
 Resolver = Callable[[str], Any]  # name → 插件可调用对象（module/Plugin），未找到返回 None
 
@@ -32,14 +38,18 @@ class ManifestEntry:
     config: dict | None = None
 
 
-def parse_manifest(text: str) -> list[ManifestEntry]:
-    """解析 YAML 文本 → 有序条目列表。空/非法返回空列表（解析失败向上抛异常）。"""
+def parse_manifest(text: str) -> tuple[list[ManifestEntry], list[str]]:
+    """解析 YAML 文本 → (plugins 条目列表, remove 名单)。
+
+    空/非法返回 ([], [])（解析失败向上抛异常）。
+    """
     data = yaml.safe_load(text) or {}
     if not isinstance(data, dict):
-        raise ValueError("manifest 必须是 mapping（顶层 plugins: 列表）")
+        raise ValueError("manifest 必须是 mapping（顶层 plugins:/remove: 键）")
+
     plugins = data.get("plugins", [])
     if plugins is None:
-        return []
+        plugins = []
     if not isinstance(plugins, list):
         raise ValueError("manifest.plugins 必须是列表")
     entries: list[ManifestEntry] = []
@@ -54,14 +64,20 @@ def parse_manifest(text: str) -> list[ManifestEntry]:
             entries.append(ManifestEntry(name=name, config=config if isinstance(config, dict) else None))
         else:
             raise ValueError(f"manifest 条目类型非法：{item!r}")
-    return entries
+
+    removes = data.get("remove", [])
+    if removes is None:
+        removes = []
+    if not isinstance(removes, list) or not all(isinstance(x, str) for x in removes):
+        raise ValueError("manifest.remove 必须是字符串列表")
+    return entries, removes
 
 
-def load_manifest_file(path: str | Path) -> list[ManifestEntry]:
-    """读一个 manifest 文件；缺失返回空列表。"""
+def load_manifest_file(path: str | Path) -> tuple[list[ManifestEntry], list[str]]:
+    """读一个 manifest 文件；缺失返回 ([], [])。"""
     p = Path(path)
     if not p.is_file():
-        return []
+        return [], []
     return parse_manifest(p.read_text(encoding="utf-8"))
 
 
@@ -82,20 +98,37 @@ def merge_manifests(layers: list[list[ManifestEntry]]) -> list[ManifestEntry]:
     return result
 
 
+def apply_removes(entries: list[ManifestEntry], removes: list[str]) -> list[ManifestEntry]:
+    """全局移除：凡 name 命中 removes 的条目剔除（最强优先级，跨所有层）。"""
+    if not removes:
+        return entries
+    blacklist = set(removes)
+    return [e for e in entries if e.name not in blacklist]
+
+
 def load_manifest(
     builtin: list[ManifestEntry] | None = None,
     project_dir: str | Path | None = None,
     user_home: str | Path | None = None,
     argv_path: str | Path | None = None,
 ) -> list[ManifestEntry]:
-    """按层叠加载合并：内置 → 项目 → 用户 → argv。"""
+    """按层叠加载合并（含 remove）：内置 → 项目 → 用户 → argv，最后全局剔除。"""
     from ..config.files import user_config_dir
 
-    layers: list[list[ManifestEntry]] = [builtin or []]
+    entry_layers: list[list[ManifestEntry]] = [builtin or []]
+    removes: list[str] = []
     if project_dir is not None:
-        layers.append(load_manifest_file(Path(project_dir) / ".minidsh" / "manifest.yaml"))
+        e, r = load_manifest_file(Path(project_dir) / ".minidsh" / "manifest.yaml")
+        entry_layers.append(e)
+        removes.extend(r)
     home = Path(user_home) if user_home else user_config_dir()
-    layers.append(load_manifest_file(home / "manifest.yaml"))
+    e, r = load_manifest_file(home / "manifest.yaml")
+    entry_layers.append(e)
+    removes.extend(r)
     if argv_path is not None:
-        layers.append(load_manifest_file(argv_path))
-    return merge_manifests(layers)
+        e, r = load_manifest_file(argv_path)
+        entry_layers.append(e)
+        removes.extend(r)
+
+    merged = merge_manifests(entry_layers)
+    return apply_removes(merged, removes)

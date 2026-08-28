@@ -8,7 +8,7 @@ from ..definition import FsRequest, FsResult, FsService
 
 __all__ = ["LocalFsService"]
 
-name = "minidsh.fs"
+name = "minidsh.fs-local"
 inject = []
 
 

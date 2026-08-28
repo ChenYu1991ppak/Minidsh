@@ -2,11 +2,10 @@
 
 源码对应：packages/llm/llm-openai 的流式映射 + ch07 的 assistant/chunk 事件层。
 
-设计（spec §plan 决策 5）：本模块是唯一 import ``openai`` 的地方之一；它把 SDK 的
-``ChatCompletionChunk`` 流映射成本仓库统一的 ``Chunk``，内核与 loop 不接触 SDK 类型。
-
-鉴权与端点由 ``minidsh.config`` 解析后传入（api_key / base_url 来自 models.json），
-本模块不读环境变量——单一职责：把「给了 key 与端点」交给上层。
+三角色的「提供方」：模块级 ``name/inject/apply`` 的插件，``apply`` 里
+``ctx.provide("llm", OpenAILlm(...))``。配置经 ``inject=["config"]`` 读 ``ctx.config``，
+不读环境变量——本模块是唯一 import openai 的地方，把 SDK 的 ``ChatCompletionChunk``
+流映射成本仓库统一的 ``Chunk``，内核与 loop 不接触 SDK 类型。
 """
 from __future__ import annotations
 
@@ -17,9 +16,12 @@ from ..definition import Chunk, LlmRuntime
 
 __all__ = ["OpenAILlm"]
 
+name = "minidsh.llm-openai"
+inject = ["config"]
+
 
 class OpenAILlm(LlmRuntime):
-    """OpenAI 兼容的流式 LLM。可注入 client 便于测试（mock）。"""
+    """OpenAI 兼容的流式 LLM。由 ``minidsh.llm-openai`` provide 到 ctx.llm。"""
 
     def __init__(
         self,
@@ -101,3 +103,23 @@ class OpenAILlm(LlmRuntime):
             yield Chunk(kind="finish", stop_reason="tool-use")
         else:
             yield Chunk(kind="finish", stop_reason="end-turn")
+
+
+def apply(ctx):
+    """provide 一个 OpenAILlm 到 ctx.llm，配置读 ctx.config（当前模型）。"""
+    cfg = ctx.config
+    model = cfg.current
+    if model is None:
+        raise RuntimeError(
+            "未配置可用模型：请在 models.json 的 models[] 里至少提供一个模型，"
+            "并用 currentModel 或 availableModels 指定当前模型"
+        )
+    if not model.url:
+        raise RuntimeError(
+            f"模型 {model.id!r} 未配置 url（OpenAI 兼容 base_url）：该模型不可用。"
+            "请在 models.json 里为该模型填写 url 字段。"
+        )
+    ctx.provide(
+        "llm",
+        OpenAILlm(model=model.id, api_key=model.api_key or None, base_url=model.url),
+    )

@@ -24,7 +24,8 @@ USER_MANIFEST = user_config_dir() / "manifest.yaml"
 
 
 def _read_user_manifest() -> list[ManifestEntry]:
-    return load_manifest_file(USER_MANIFEST)
+    entries, _removes = load_manifest_file(USER_MANIFEST)
+    return entries
 
 
 def _write_user_manifest(entries: list[str]) -> None:

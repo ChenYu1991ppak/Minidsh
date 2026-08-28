@@ -79,7 +79,14 @@ async def _run_repl(ctx) -> None:
 
 
 def _cmd_run(args) -> int:
-    ctx = load_project(args.dir, storage=args.storage, manifest_path=args.manifest)
+    from ...infrastructure.packaging import entry_point_resolver
+
+    ctx = load_project(
+        args.dir,
+        storage=args.storage,
+        manifest_path=args.manifest,
+        extra_resolver=entry_point_resolver(),
+    )
     asyncio.run(_run_repl(ctx))
     return 0
 
