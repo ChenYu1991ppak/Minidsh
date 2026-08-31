@@ -31,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("dir", help="项目目录路径")
     run.add_argument("--storage", choices=["jsonl", "sqlite"], default=None, help="持久化后端")
     run.add_argument("--manifest", default=None, help="额外清单文件（argv 覆盖层，优先级最高）")
+    run.add_argument("--profile", default=None, help="profile 名（~/.minidsh/profiles/<name>.yaml）")
 
     replay = sub.add_parser("replay", help="重放一个会话的时间线")
     replay.add_argument("path", help="jsonl 文件 / 含 sessions 或 sessions.db 的目录")
@@ -83,6 +84,7 @@ def _cmd_run(args) -> int:
         args.dir,
         storage=args.storage,
         manifest_path=args.manifest,
+        profile=args.profile,
     )
     asyncio.run(_run_repl(ctx))
     return 0
