@@ -1,44 +1,27 @@
 """项目加载器：把项目目录装配成完整能力图。
 
 装配方式（全声明式，对齐官方 bundle）：
-- 内置 base 清单 = 随包 `_bundles/base/base.yaml`（17 个静态插件名）；
-- base 插件实现 = `_bundles/base/registry.py` 的 name→module 静态映射（+ capabilities 下
-  shell/fs/tool），不闭包捕获 runtime 变量；
+- 内置 base 清单 = 随包 `_bundles/base/base.yaml`（17 个插件名）；
+- 内置 base + 第三方插件同一发现机制：entry-point 组 `minidsh.plugins`（条目名 = 插件名）；
 - config/root 是运行时值（models.json/settings.json / CLI dir），经 `minidsh.config`
   / `minidsh.root` 两个插件的 ``SET`` 槽注入；
-- 第三方插件经 entry-point 组 `minidsh.plugins` 由 `extra_resolver` 发现；
 - 层叠 = 内置 base.yaml ← 项目 .minidsh/manifest.yaml ← 用户 ~/.minidsh/manifest.yaml ← argv。
 
-resolver：name → 插件（内置 registry 优先，其次第三方 entry-point）。
+resolver：统一走 entry_point_resolver（内置与第三方无差别）。
 """
 from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
 
 from ...cordis import Context
 from ...infrastructure.config import Config, resolve_config
 from ...infrastructure.manifest import ManifestEntry, load_manifest, build_context
-from ..._bundles.base.registry import builtin_registry
+from ...infrastructure.packaging import entry_point_resolver
 from ...infrastructure.config.providers import config as config_plugin
 from ...applications.workspace.providers import root as root_plugin
 
 __all__ = ["load_project"]
-
-
-def _make_resolver(base_plugins: dict[str, Any], extra_resolver=None):
-    """name → 插件：先查内置 registry，再查第三方 entry-point。"""
-
-    def resolver(name: str):
-        plugin = base_plugins.get(name)
-        if plugin is not None:
-            return plugin
-        if extra_resolver is not None:
-            return extra_resolver(name)
-        return None
-
-    return resolver
 
 
 def load_project(
@@ -68,8 +51,6 @@ def load_project(
     config_plugin.SET = cfg
     root_plugin.SET = root
 
-    base_plugins = builtin_registry()
-
     # 内置清单：随包 base.yaml 的 17 个静态插件名；quiet 时剔除 trace-render
     builtin = _builtin_entries(quiet)
 
@@ -78,16 +59,17 @@ def load_project(
     else:
         entries = load_manifest(builtin=builtin, project_dir=root, argv_path=manifest_path)
 
-    resolver = _make_resolver(base_plugins, extra_resolver)
+    # 统一 resolver：内置 base 与第三方插件同走 entry-point 发现（无 registry）
+    resolver = extra_resolver if extra_resolver is not None else entry_point_resolver()
     return build_context(cfg, entries, resolver)
 
 
 def _builtin_entries(quiet: bool) -> list[ManifestEntry]:
-    """内置激活清单（含 17 插件名；quiet 时剔 trace-render）。"""
-    from ..._bundles.base.registry import builtin_registry
+    """内置激活清单（随包 base.yaml 的 17 个插件名；quiet 时剔 trace-render）。"""
+    from ..._bundles.base import BASE_MANIFEST_NAMES
 
     return [
         ManifestEntry(name)
-        for name in builtin_registry()
+        for name in BASE_MANIFEST_NAMES
         if not (quiet and name == "minidsh.trace-render")
     ]
