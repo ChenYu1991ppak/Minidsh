@@ -30,8 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="加载项目目录并进入 loop")
     run.add_argument("dir", help="项目目录路径")
     run.add_argument("--storage", choices=["jsonl", "sqlite"], default=None, help="持久化后端")
-    run.add_argument("--manifest", default=None, help="额外清单文件（argv 覆盖层，优先级最高）")
-    run.add_argument("--profile", default=None, help="profile 名（~/.minidsh/profiles/<name>.yaml）")
+    run.add_argument("--profile", default=None, help="profile 名或文件路径（名字=选，路径=覆盖）")
 
     replay = sub.add_parser("replay", help="重放一个会话的时间线")
     replay.add_argument("path", help="jsonl 文件 / 含 sessions 或 sessions.db 的目录")
@@ -39,9 +38,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     plugin = sub.add_parser("plugin", help="安装/卸载/列举插件")
     plugin_sub = plugin.add_subparsers(dest="plugin_action", required=True)
-    p_add = plugin_sub.add_parser("add", help="安装一个插件包并记入 manifest")
+    p_add = plugin_sub.add_parser("add", help="安装一个插件包并记入用户 profile")
     p_add.add_argument("pkg", help="pip 可解析的 spec（本地路径/git+/已发布包名）")
-    p_rm = plugin_sub.add_parser("remove", help="从 manifest 移除插件名")
+    p_rm = plugin_sub.add_parser("remove", help="从用户 profile 移除插件名")
     p_rm.add_argument("name", help="插件名")
     plugin_sub.add_parser("ls", help="列出发现到的插件 + 激活状态")
 
@@ -80,11 +79,18 @@ async def _run_repl(ctx) -> None:
 
 
 def _cmd_run(args) -> int:
+    from pathlib import Path as _Path
+
+    # --profile 合一：文件存在 → 当 argv 覆盖路径；否则 → 当命名 profile 名
+    profile_arg = args.profile
+    argv_path = profile_arg if (profile_arg and _Path(profile_arg).exists()) else None
+    profile_name = None if argv_path else profile_arg
+
     ctx = load_project(
         args.dir,
         storage=args.storage,
-        manifest_path=args.manifest,
-        profile=args.profile,
+        profile=profile_name,
+        argv_path=argv_path,
     )
     asyncio.run(_run_repl(ctx))
     return 0

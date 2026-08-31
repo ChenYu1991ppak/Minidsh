@@ -8,7 +8,7 @@
 name（对应官方 ``export const name``），值 import 为模块后经 normalize_plugin 归一。
 
 resolver 契约：``entry_point_resolver()`` 返回 name → 插件可调用对象 的查找器，供
-manifest.build_context 使用；未找到返回 None。
+bundle.build_context 使用；未找到返回 None。
 """
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def discover_plugins() -> dict[str, Any]:
 
 
 def entry_point_resolver() -> Callable[[str], Any]:
-    """返回 name → 插件 的查找器（供 manifest.build_context）。
+    """返回 name → 插件 的查找器（供 bundle.build_context）。
 
     每次调用 resolver 时惰性发现一次并缓存（发现成本一次性）。
     """

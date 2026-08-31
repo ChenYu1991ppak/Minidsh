@@ -1,12 +1,12 @@
 """`minidsh plugin` 子命令：add / remove / ls。
 
 对齐官方 ``dsh plugin add/remove``（Python 版）：
-- ``add <pkg-spec>``  = pip 安装 + 把该包装的 entry-point ``name`` 追加进用户级
-  ``~/.minidsh/manifest.yaml``。
-- ``remove <name>``    = 从 manifest 删该 name（不 pip uninstall，见 SPEC-packaging §9）。
-- ``ls``               = 列出全部 entry-point 发现的插件 + 标注哪些已在 manifest 激活。
+- ``add <pkg-spec>``  = pip 安装 + 把该包装的 entry-point ``name`` 追加进用户级 profile
+  ``~/.minidsh/profile.yaml``。
+- ``remove <name>``    = 从用户 profile 删该 name（不 pip uninstall）。
+- ``ls``               = 列出全部 entry-point 发现的插件 + 标注哪些已在用户 profile 激活。
 
-manifest 读写走 ``minidsh.manifest.schema``（parse/load）；用户级路径复用 config.files。
+用户级插件激活写 ``~/.minidsh/profile.yaml`` 的 ``plugins:`` 键。
 """
 from __future__ import annotations
 
@@ -15,30 +15,35 @@ import sys
 from pathlib import Path
 
 from ..config.files import user_config_dir
-from ..manifest import load_manifest_file, ManifestEntry
 from .discover import discover_plugins
 
 __all__ = ["plugin_add", "plugin_remove", "plugin_list"]
 
-USER_MANIFEST = user_config_dir() / "manifest.yaml"
+USER_PROFILE = user_config_dir() / "profile.yaml"
 
 
-def _read_user_manifest() -> list[ManifestEntry]:
-    entries, _removes = load_manifest_file(USER_MANIFEST)
-    return entries
+def _read_user_plugins() -> list[str]:
+    """读用户 profile 的 plugins 名列表。"""
+    if not USER_PROFILE.is_file():
+        return []
+    import yaml
+
+    data = yaml.safe_load(USER_PROFILE.read_text(encoding="utf-8")) or {}
+    plugins = data.get("plugins") or []
+    return [p if isinstance(p, str) else p.get("name") for p in plugins if p]
 
 
-def _write_user_manifest(entries: list[str]) -> None:
-    """把「插件名列表」写成用户级 manifest.yaml（仅 name，无 config）。"""
-    USER_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+def _write_user_plugins(names: list[str]) -> None:
+    """把插件名列表写成用户 profile.yaml 的 plugins 键（仅 name，无 config）。"""
+    USER_PROFILE.parent.mkdir(parents=True, exist_ok=True)
     lines = ["plugins:"]
-    for name in entries:
+    for name in names:
         lines.append(f"  - {name}")
-    USER_MANIFEST.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    USER_PROFILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def plugin_add(pkg_spec: str, *, pip: list[str] | None = None) -> int:
-    """安装一个插件包并记入用户 manifest。
+    """安装一个插件包并记入用户 profile。
 
     ``pip`` 为注入的安装命令前缀（测试用）；缺省 ``[sys.executable, "-m", "pip", "install"]``。
     """
@@ -48,13 +53,11 @@ def plugin_add(pkg_spec: str, *, pip: list[str] | None = None) -> int:
         print(f"[minidsh] pip 安装失败：{result.stderr.strip()}", file=sys.stderr)
         return 1
 
-    # 发现该 pkg 声明的插件名（entry-point name 即插件名）
     found = discover_plugins()
-    existing = {e.name for e in _read_user_manifest()}
-    # 无法精确定位「刚装的这个包贡献了哪些插件」，v1 保守：把新出现的插件名一并记入
+    existing = set(_read_user_plugins())
     new_names = [n for n in found if n not in existing]
     if new_names:
-        _write_user_manifest([e.name for e in _read_user_manifest()] + new_names)
+        _write_user_plugins(_read_user_plugins() + new_names)
         for n in new_names:
             print(f"[minidsh] 已激活插件 {n}")
     else:
@@ -63,20 +66,20 @@ def plugin_add(pkg_spec: str, *, pip: list[str] | None = None) -> int:
 
 
 def plugin_remove(name: str) -> int:
-    """从用户 manifest 移除插件名（不 pip uninstall）。"""
-    entries = _read_user_manifest()
-    remaining = [e.name for e in entries if e.name != name]
+    """从用户 profile 移除插件名（不 pip uninstall）。"""
+    entries = _read_user_plugins()
+    remaining = [n for n in entries if n != name]
     if len(remaining) == len(entries):
-        print(f"[minidsh] 插件 {name!r} 不在 manifest 中", file=sys.stderr)
+        print(f"[minidsh] 插件 {name!r} 不在用户 profile 中", file=sys.stderr)
         return 1
-    _write_user_manifest(remaining)
-    print(f"[minidsh] 已从 manifest 移除插件 {name}")
+    _write_user_plugins(remaining)
+    print(f"[minidsh] 已从用户 profile 移除插件 {name}")
     return 0
 
 
 def plugin_list() -> int:
-    """列出所有 entry-point 发现的插件 + 标注是否已激活（在 manifest 中）。"""
-    active = {e.name for e in _read_user_manifest()}
+    """列出所有 entry-point 发现的插件 + 标注是否已在用户 profile 激活。"""
+    active = set(_read_user_plugins())
     found = discover_plugins()
     if not found:
         print("（未发现任何 entry-point 插件）")

@@ -1,10 +1,9 @@
 """项目加载器：把项目目录装配成完整能力图。
 
-装配方式（全声明式，对齐官方 bundle + profile）：
-- profile 层 = 所选 bundles 的 manifest 有序合并（默认 [minidsh.base]）；
+装配方式（对齐官方 bundle + profile）：
+- profile 覆盖链（默认 [minidsh.base] < 命名 < 项目 < 用户 < argv）得到最终 plugins 名单；
 - 内置 base + 第三方插件同一发现机制：entry-point 组 `minidsh.plugins`（条目名 = 插件名）；
-- config/root 是运行时值，经 `minidsh.config` / `minidsh.root` 两个插件的 ``SET`` 槽注入；
-- 层叠 = profile 层 ← 项目 .minidsh/manifest.yaml ← 用户 ~/.minidsh/manifest.yaml ← argv。
+- config/root 是运行时值，经 `minidsh.config` / `minidsh.root` 两个插件的 ``SET`` 槽注入。
 
 resolver：统一走 entry_point_resolver（内置与第三方无差别）。
 """
@@ -15,9 +14,9 @@ from pathlib import Path
 
 from ...cordis import Context
 from ...infrastructure.config import Config, resolve_config
-from ...infrastructure.manifest import ManifestEntry, load_manifest, build_context
+from ...infrastructure.bundle import PluginRef, build_context
 from ...infrastructure.packaging import entry_point_resolver
-from ...infrastructure.profile import resolve_profile_manifest
+from ...infrastructure.profile import resolve_profile
 from ...infrastructure.config.providers import config as config_plugin
 from ...applications.workspace.providers import root as root_plugin
 
@@ -31,17 +30,17 @@ def load_project(
     storage: str | None = None,
     quiet: bool = False,
     profile: str | None = None,
-    manifest_entries: list[ManifestEntry] | None = None,
-    manifest_path: str | Path | None = None,
+    plugins: list[PluginRef] | None = None,
+    argv_path: str | Path | None = None,
     extra_resolver=None,
 ) -> Context:
     """加载项目目录，装配能力图，返回 Context。
 
     - ``config``：已解析配置；为 None 时用 ``resolve_config(project_dir)`` 解析。
     - ``storage``：CLI 覆盖持久化后端（jsonl | sqlite）。
-    - ``profile``：profile 名；None = 默认 [minidsh.base]。
-    - ``manifest_entries``：（测试用）显式清单，跳过文件层叠。
-    - ``manifest_path``：argv 覆盖层清单文件（优先级最高）。
+    - ``profile``：profile 名（或路径）；None = 默认 [minidsh.base]。
+    - ``plugins``：（测试用）显式 plugins 名单，跳过覆盖链。
+    - ``argv_path``：argv 覆盖 profile 文件（优先级最高）。
     - ``extra_resolver``：第三方插件查找器（entry-point 发现）。
     """
     root = Path(project_dir).resolve()
@@ -53,23 +52,26 @@ def load_project(
     config_plugin.SET = cfg
     root_plugin.SET = root
 
-    # profile 层（合并所选 bundles 的 manifest）；quiet 时剔除 trace-render
-    builtin = _profile_entries(profile, quiet)
-
-    if manifest_entries is not None:
-        entries = manifest_entries
+    # profile 覆盖链得到最终 plugins 名单；quiet 时剔除 trace-render
+    if plugins is not None:
+        entries = plugins
     else:
-        entries = load_manifest(builtin=builtin, project_dir=root, argv_path=manifest_path)
+        entries = _profile_plugins(profile, root, argv_path, quiet)
 
     # 统一 resolver：内置 base 与第三方插件同走 entry-point 发现（无 registry）
     resolver = extra_resolver if extra_resolver is not None else entry_point_resolver()
-    return build_context(cfg, entries, resolver)
+    return build_context(entries, resolver)
 
 
-def _profile_entries(profile: str | None, quiet: bool) -> list[ManifestEntry]:
-    """解析 profile → 合并的 profile 层清单；quiet 时剔除 trace-render。"""
-    merged = resolve_profile_manifest(profile)
+def _profile_plugins(
+    profile: str | None,
+    root: Path,
+    argv_path: str | Path | None,
+    quiet: bool,
+) -> list[PluginRef]:
+    """解析覆盖链 → 最终 plugins 名单；quiet 时剔除 trace-render。"""
+    merged = resolve_profile(profile=profile, project_dir=root, argv_path=argv_path)
     return [
-        e for e in merged
-        if not (quiet and e.name == "minidsh.trace-render")
+        r for r in merged
+        if not (quiet and r.name == "minidsh.trace-render")
     ]

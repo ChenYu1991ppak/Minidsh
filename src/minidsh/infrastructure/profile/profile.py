@@ -1,65 +1,125 @@
-"""profile：有序 bundle 组合（对齐官方 profile）。
+"""profile：bundle 选择 + 直接覆盖（覆盖链）。
 
-profile 文件 ``~/.minidsh/profiles/<name>.yaml``，内容 ``bundles: [minidsh.base, ...]``。
-默认（无 --profile）：``[minidsh.base]``。组合 = 依序把每个 bundle 的 manifest 作为一层，
-用 ``merge_manifests`` 合并（后层 win per row）。
+profile 文件可同时含三键：
+    bundles:            # 选 bundle（覆盖：本层 bundles 整体替换「前面的 bundle 组合」中的非 base 部分）
+    plugins:            # 直接覆盖（累加：同名替换、不同名追加）
+    remove:             # 全局删
+
+覆盖链（后覆盖前）：默认 [minidsh.base] < 命名 profile < 项目 < 用户 < argv。
+``--profile``：文件存在 → 当路径（argv 覆盖）；否则 → 当命名 profile 名（~/.minidsh/profiles/<n>.yaml）。
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-from ...infrastructure.bundle import Bundle, load_bundle, BUILTIN_BUNDLE_NAME
-from ...infrastructure.manifest import ManifestEntry, merge_manifests, load_manifest_file
+from ...infrastructure.bundle import (
+    PluginRef,
+    merge_plugins,
+    apply_removes,
+    load_bundle,
+    BUILTIN_BUNDLE_NAME,
+)
 
-__all__ = ["resolve_profile_manifest", "profile_path", "DEFAULT_PROFILE_BUNDLES"]
+__all__ = ["resolve_profile", "profile_path", "DEFAULT_BUNDLES"]
 
-DEFAULT_PROFILE_BUNDLES = [BUILTIN_BUNDLE_NAME]
+DEFAULT_BUNDLES = [BUILTIN_BUNDLE_NAME]
 
 
 def profile_path(name: str, home: str | Path | None = None) -> Path:
-    """profile 文件路径：~/.minidsh/profiles/<name>.yaml。"""
     from ...infrastructure.config.files import user_config_dir
 
     base = Path(home) if home else user_config_dir()
     return base / "profiles" / f"{name}.yaml"
 
 
-def resolve_profile_manifest(profile: str | None = None) -> list[ManifestEntry]:
-    """解析 profile 得到「profile 层」的合并 manifest。
-
-    - ``profile`` 为 None → 默认 bundles = [minidsh.base]。
-    - 否则读 ~/.minidsh/profiles/<profile>.yaml 的 ``bundles:`` 列表。
-    - 依序 load_bundle 每个名字，把各 bundle manifest 作为一层 merge（后层 win）。
-    """
-    bundles = DEFAULT_PROFILE_BUNDLES
-    if profile is not None:
-        entries, _removes = load_manifest_file(profile_path(profile))
-        # profile 文件里 bundles: 是字符串列表，不是 manifest.yml 的 plugins 条目；
-        # 需从原始 yaml 里单独读 bundles 键，而非复用 load_manifest_file 的 plugins 解析。
-        names = _read_profile_bundles(profile_path(profile))
-        if names:
-            bundles = names
-
-    layers: list[list[ManifestEntry]] = []
-    for name in bundles:
-        bundle = load_bundle(name)
-        if bundle is not None:
-            layers.append(bundle.manifest)
-        else:
-            # 未知 bundle：告警跳过（对齐「未知插件告警跳过」的容错语义）
-            import sys
-            print(f"[minidsh] 警告：profile 引用了未知 bundle {name!r}，跳过", file=sys.stderr)
-    return merge_manifests(layers)
-
-
-def _read_profile_bundles(path: Path) -> list[str]:
-    """从 profile.yaml 读顶层 ``bundles:`` 键（字符串列表）。"""
+def _parse_profile_file(path: Path) -> dict:
+    """读一个 profile 文件 → {bundles, plugins, remove}。缺失返回空 dict。"""
     if not path.is_file():
-        return []
+        return {}
     import yaml
 
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    bundles = data.get("bundles", [])
-    if not isinstance(bundles, list):
-        return []
-    return [b for b in bundles if isinstance(b, str)]
+    if not isinstance(data, dict):
+        raise ValueError(f"profile 必须是 mapping：{path}")
+    return data
+
+
+def _read_plugins(data: dict) -> tuple[list[PluginRef], list[str]]:
+    """从 profile 数据里单独解析 plugins/remove（复用 bundle 的 parse 逻辑）。"""
+    raw = data.get("plugins") or []
+    plugins: list[PluginRef] = []
+    for item in raw:
+        if isinstance(item, str):
+            plugins.append(PluginRef(name=item))
+        elif isinstance(item, dict):
+            nm = item.get("name")
+            cfg = item.get("config")
+            plugins.append(PluginRef(name=nm, config=cfg if isinstance(cfg, dict) else None))
+        else:
+            raise ValueError(f"plugin 条目类型非法：{item!r}")
+    removes = data.get("remove") or []
+    return plugins, removes
+
+
+def resolve_profile(
+    profile: str | None = None,
+    project_dir: str | Path | None = None,
+    user_home: str | Path | None = None,
+    argv_path: str | Path | None = None,
+) -> list[PluginRef]:
+    """解析覆盖链，返回最终 plugins 名单（累加 + remove 已应用）。
+
+    覆盖链：
+      1. 默认 bundles=[minidsh.base]
+      2. 命名 profile（若 profile 给的是「名字」）
+      3. 项目 <project>/.minidsh/profile.yaml
+      4. 用户 ~/.minidsh/profile.yaml
+      5. argv（--profile 给「路径」时，作为最高覆盖层）
+
+    - bundles 覆盖：取「最后写 bundles 的那层」的非 base 部分 + [minidsh.base]。
+    - plugins 累加：跨层同名替换、不同名追加。
+    - remove 全局删。
+    """
+    from ...infrastructure.config.files import user_config_dir
+
+    layers: list[dict] = []
+    # 命名 profile
+    if profile is not None and not Path(profile).exists():
+        layers.append(_parse_profile_file(profile_path(profile)))
+    # 项目
+    if project_dir is not None:
+        layers.append(_parse_profile_file(Path(project_dir) / ".minidsh" / "profile.yaml"))
+    # 用户
+    home = Path(user_home) if user_home else user_config_dir()
+    layers.append(_parse_profile_file(home / "profile.yaml"))
+    # argv
+    if argv_path is not None:
+        layers.append(_parse_profile_file(Path(argv_path)))
+
+    # bundles 覆盖：取最后写 bundles 的层
+    bundles = DEFAULT_BUNDLES
+    for layer in layers:
+        if "bundles" in layer:
+            bs = layer["bundles"]
+            if isinstance(bs, list) and all(isinstance(b, str) for b in bs):
+                bundles = [BUILTIN_BUNDLE_NAME] + [b for b in bs if b != BUILTIN_BUNDLE_NAME]
+
+    # 展开 bundles 的 plugins（base + 选定 bundles，按序 merge）
+    plugin_layers: list[list[PluginRef]] = []
+    removes: list[str] = []
+    for bname in bundles:
+        bundle = load_bundle(bname)
+        if bundle is not None:
+            plugin_layers.append(bundle.plugins)
+            removes.extend(bundle.remove)
+        else:
+            print(f"[minidsh] 警告：未知 bundle {bname!r}，跳过", file=__import__("sys").stderr)
+
+    # 叠加各层 profile 的 plugins/remove
+    for layer in layers:
+        plugins, layer_removes = _read_plugins(layer)
+        plugin_layers.append(plugins)
+        removes.extend(layer_removes)
+
+    merged = merge_plugins(plugin_layers)
+    return apply_removes(merged, removes)
