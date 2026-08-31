@@ -1,5 +1,5 @@
 # 内置 base 清单（随包分发，对齐官方 bundle 声明式）。
-# 这份是「激活哪些插件」的声明；实现是 plugins/ 下的静态模块 + capabilities 下的 shell/fs/tool。
+# 这份是「激活哪些插件」的声明；实现是各能力 providers/ 下的静态 module 插件。
 plugins:
   - minidsh.config
   - minidsh.root

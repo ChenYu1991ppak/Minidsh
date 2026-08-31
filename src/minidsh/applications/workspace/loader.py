@@ -21,7 +21,8 @@ from ...cordis import Context
 from ...infrastructure.config import Config, resolve_config
 from ...infrastructure.manifest import ManifestEntry, load_manifest, build_context
 from ..._bundles.base.registry import builtin_registry
-from ..._bundles.base import plugins as base_plugins_pkg
+from ...infrastructure.config.providers import config as config_plugin
+from ...applications.workspace.providers import root as root_plugin
 
 __all__ = ["load_project"]
 
@@ -64,8 +65,8 @@ def load_project(
         cfg = replace(cfg, storage=storage)
 
     # 注入 config/root 运行时值（经 SET 槽，非闭包）
-    base_plugins_pkg.config.SET = cfg
-    base_plugins_pkg.root.SET = root
+    config_plugin.SET = cfg
+    root_plugin.SET = root
 
     base_plugins = builtin_registry()
 
