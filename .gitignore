@@ -26,3 +26,5 @@ htmlcov/
 
 # 参考仓库：独立 git 仓库，只读，永不修改/提交
 deepseek-harness-anatomy/
+.history/
+.vscode/
