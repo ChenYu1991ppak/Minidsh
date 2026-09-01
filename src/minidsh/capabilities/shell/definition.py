@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ...cordis import Service
+from ...cordis import CapabilityDefinition
 
 __all__ = ["ShellRequest", "ShellResult", "ShellService"]
 
@@ -31,8 +31,10 @@ class ShellResult:
     exit_code: int
 
 
-class ShellService(Service):
+class ShellService(CapabilityDefinition):
     """ctx.shell：执行命令的能力定义。多个 provider 可替换实现。"""
+
+    service_name = "shell"
 
     async def execute(self, request: ShellRequest) -> ShellResult:
         raise NotImplementedError

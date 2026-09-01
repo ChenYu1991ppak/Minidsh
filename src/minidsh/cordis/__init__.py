@@ -12,6 +12,7 @@ from .events import EventMethods
 from .fiber import Fiber
 from .plugin import Plugin, normalize_plugin
 from .service import Service
+from .capability import CapabilityDefinition, CapabilityProvider, CapabilityConsumer
 from .context import Context
 
 __all__ = [
@@ -23,4 +24,7 @@ __all__ = [
     "ServiceNotFoundError",
     "Symbols",
     "EventMethods",
+    "CapabilityDefinition",
+    "CapabilityProvider",
+    "CapabilityConsumer",
 ]

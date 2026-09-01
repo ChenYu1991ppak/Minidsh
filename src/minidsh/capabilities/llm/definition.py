@@ -17,7 +17,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from ...cordis import Service
+from ...cordis import CapabilityDefinition
 
 __all__ = ["Chunk", "LlmRuntime", "estimate_tokens"]
 
@@ -40,12 +40,13 @@ class Chunk:
     stop_reason: str | None = None   # finish 用
 
 
-class LlmRuntime(Service):
+class LlmRuntime(CapabilityDefinition):
     """LLM 运行时接口。loop 消费此接口，不关心底层 SDK。
 
     一个 provider（openai / stub / 未来 anthropic）实现此接口。
-    与其它能力同机制：子类构造即注册（``super().__init__(ctx, name)``）。
     """
+
+    service_name = "llm"
 
     @abstractmethod
     def stream(

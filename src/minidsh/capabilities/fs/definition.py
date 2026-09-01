@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ...cordis import Service
+from ...cordis import CapabilityDefinition
 
 __all__ = ["FsRequest", "FsResult", "FsService"]
 
@@ -26,8 +26,10 @@ class FsResult:
     content: str
 
 
-class FsService(Service):
+class FsService(CapabilityDefinition):
     """ctx.fs：读文件的能力定义。多个 provider 可替换实现。"""
+
+    service_name = "fs"
 
     async def execute(self, request: FsRequest) -> FsResult:
         raise NotImplementedError

@@ -13,6 +13,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from ..definition import Chunk, LlmRuntime
+from ....cordis import CapabilityProvider
 
 __all__ = ["OpenAILlm"]
 
@@ -20,7 +21,7 @@ name = "minidsh.llm-openai"
 inject = ["config"]
 
 
-class OpenAILlm(LlmRuntime):
+class OpenAILlm(LlmRuntime, CapabilityProvider):
     """OpenAI 兼容的流式 LLM。构造即注册（``ctx.llm``）。"""
 
     def __init__(
@@ -32,7 +33,7 @@ class OpenAILlm(LlmRuntime):
         base_url: str | None = None,
         client: Any | None = None,
     ):
-        super().__init__(ctx, "llm")
+        super().__init__(ctx)
         if client is not None:
             self._client = client
         else:
