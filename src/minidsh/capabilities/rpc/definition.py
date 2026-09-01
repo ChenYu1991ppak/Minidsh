@@ -4,31 +4,32 @@
 seam：声明 ``RpcGateway`` 接口与 ``NoopRpcGateway`` 实现（不开启、不转发），
 为未来跨进程委派/外部驱动预留位置。
 
-扩展方式：定义 ``RpcGateway`` 子类覆写 ``start`` / ``handle`` / ``request``。
+三角色：``RpcGateway`` 是定义（纯接口），``NoopRpcGateway`` 是 provider（构造即注册 ctx.rpc）。
 """
 from __future__ import annotations
 
-from ...cordis import Service
+from ...cordis import CapabilityDefinition, CapabilityProvider
 
 __all__ = ["RpcGateway", "NoopRpcGateway"]
 
 
-class RpcGateway(Service):
-    """跨进程 RPC 网关定义（seam）。no-op 不开启服务。"""
+class RpcGateway(CapabilityDefinition):
+    """跨进程 RPC 网关定义（seam）。"""
 
-    def __init__(self, ctx):
-        super().__init__(ctx, "rpc")
+    service_name = "rpc"
 
     async def start(self) -> None:
-        """开启网关。no-op 不监听。"""
+        raise NotImplementedError
+
+    async def request(self, method: str, params: dict) -> dict:
+        raise NotImplementedError
+
+
+class NoopRpcGateway(RpcGateway, CapabilityProvider):
+    """显式 no-op provider：不开启、不转发，构造即注册 ctx.rpc。"""
+
+    async def start(self) -> None:
         return None
 
     async def request(self, method: str, params: dict) -> dict:
-        """发起请求。no-op 返回不可用。"""
         return {"available": False, "method": method}
-
-
-class NoopRpcGateway(RpcGateway):
-    """显式 no-op 命名实现。"""
-
-    pass

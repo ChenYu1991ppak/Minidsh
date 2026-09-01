@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ...cordis import Service
+from ...cordis import CapabilityDefinition
 from ..llm import estimate_tokens
 
 __all__ = [
@@ -54,24 +54,14 @@ from .strategies.prune import PruneStrategy
 from .strategies.summarize import SummarizeStrategy
 
 
-class CompactionEngine(Service):
-    """ctx.compaction：token 压力触发压缩（CompactionEngine / BasicCompactionEngine 合一）。"""
+class CompactionEngine(CapabilityDefinition):
+    """ctx.compaction：token 压力触发压缩。纯接口——具体实现见 providers/compaction。"""
 
-    def __init__(
-        self,
-        ctx,
-        context_window: int = 8000,
-        threshold_ratio: float = 0.8,
-        strategy: CompactionStrategy | None = None,
-    ):
-        super().__init__(ctx, "compaction")
-        self.context_window = context_window
-        self.threshold_ratio = threshold_ratio
-        self.strategy = strategy or PruneStrategy()
+    service_name = "compaction"
 
     @property
     def threshold(self) -> int:
-        return int(self.context_window * self.threshold_ratio)
+        raise NotImplementedError
 
     async def maybe_compact(self, agent) -> dict | None:
         """压力触发：达阈值才压缩；未达返回 None（compact_if_needed，index.ts:21）。

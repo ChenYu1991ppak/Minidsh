@@ -21,7 +21,7 @@ v1 简化（相对 ch11）：
 """
 from __future__ import annotations
 
-from ...cordis import Service
+from ...cordis import CapabilityProvider
 
 __all__ = [
     "SubagentError",
@@ -116,11 +116,16 @@ class InProcessSubagentProvider(SubagentProvider):
         return SubagentResult(text=final)
 
 
-class SubagentRegistry(Service):
-    """ctx.subagents：provider 注册表 + agent 定义注册表（index.ts:172 + agents）。"""
+class SubagentRegistry(CapabilityProvider):
+    """ctx.subagents：provider 注册表 + agent 定义注册表（index.ts:172 + agents）。
 
-    def __init__(self, ctx):
-        super().__init__(ctx, "subagents")
+    注册表型 seam：本类是「能力边界」provider（提供 ctx.subagents 服务），
+    内部再维护 SubagentProvider 的注册表（里层 provider 不套三角色基类）。
+    """
+
+    service_name = "subagents"
+
+    def _init(self, ctx):
         self._providers: dict[str, SubagentProvider] = {}
         self._agents: dict[str, dict] = {}  # agent 名 → 定义（name/description/content）
         self._run_seq = 0

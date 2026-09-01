@@ -8,7 +8,7 @@
 """
 from __future__ import annotations
 
-from ...cordis import Service
+from ...cordis import CapabilityDefinition
 from dataclasses import dataclass, field
 
 
@@ -36,31 +36,24 @@ def render_prompt(assembly: PromptAssembly) -> str:
     return "\n\n".join(s.text for s in assembly.sections if s.text)
 
 
-class SystemPromptService(Service):
-    """ctx.systemPrompt：分节注册与组装（index.ts:338）。"""
+class SystemPromptService(CapabilityDefinition):
+    """ctx.systemPrompt：分节注册与组装（index.ts:338）。
 
-    def __init__(self, ctx):
-        super().__init__(ctx, "systemPrompt")
-        self._sections: list[PromptSection] = []
+    纯接口：子类（provider）实现 section/assemble，并负责初始化 _sections 与 ctx。
+    """
+
+    service_name = "systemPrompt"
 
     def section(self, name: str, text: str, order: int = 0):
         """注册一个片段（index.ts:381）。注册即效应：卸载时自动移除。"""
-        entry = PromptSection(name, order, text)
-
-        def setup():
-            self._sections.append(entry)
-            return lambda: self._sections.remove(entry)
-
-        return self.ctx.effect(setup, label=f"section:{name}")
+        raise NotImplementedError
 
     def assemble(self) -> PromptAssembly:
         """按 order 升序组装（assemble，index.ts:467）。"""
-        assembly = PromptAssembly()
-        assembly.sections = sorted(self._sections, key=lambda s: s.order)
-        return assembly
+        raise NotImplementedError
 
     def render(self) -> str:
-        """便捷：assemble + render 一步到位。"""
+        """便捷：assemble + render 一步到位（renderPrompt，index.ts:212-217）。"""
         return render_prompt(self.assemble())
 
 

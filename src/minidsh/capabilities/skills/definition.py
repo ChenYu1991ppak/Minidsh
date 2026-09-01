@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ...cordis import Service
+from ...cordis import CapabilityProvider
 
 __all__ = [
     "SkillSummary",
@@ -156,14 +156,19 @@ class FilesystemSkillProvider(SkillProvider):
 # ---------- 注册表 ----------
 
 
-class SkillRegistry(Service):
+class SkillRegistry(CapabilityProvider):
     """ctx.skills：skill provider 注册表（index.ts:357）。
 
     [教学简化] 单作用域：一个 provider 表，无 scope 链分层；同层同名后注册遮蔽先注册。
+
+    注册表型 seam：SkillRegistry 是「能力边界」的 provider（提供 ctx.skills 服务），
+    它内部再维护一张「子 provider 注册表」——里层 SkillProvider 不套三角色基类，
+    是 registry 的内部类型。
     """
 
-    def __init__(self, ctx):
-        super().__init__(ctx, "skills")
+    service_name = "skills"
+
+    def _init(self, ctx):
         self._providers: dict[str, SkillProvider] = {}
 
     # ---- 注册侧 ----
