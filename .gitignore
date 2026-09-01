@@ -7,12 +7,11 @@ venv/
 build/
 dist/
 
-# 会话落盘产物（示例/测试生成）
+# 会话落盘产物
 .dsh/
 
-# 敏感信息（spec §9 Never：绝不提交 secrets / API key）
-# models.json 内嵌明文 apiKey，永不提交；仓库只 add models.json.example 模板。
-# settings.json 非密（storage/compaction/tools），可提交共享。
+# 敏感信息（绝不提交 secrets / API key）
+# models.json 内嵌明文 apiKey，永不提交。
 .minidsh/models.json
 .env
 *.key
@@ -24,7 +23,13 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# 参考仓库：独立 git 仓库，只读，永不修改/提交
+# 非发布内容（本仓库只发布 src/ 库；测试 / 示例 / 文档布局各自独立，不随库分发）
+tests/
+examples/
+*.md
+tasks/
+
+# 参考仓库：独立 git 仓库
 deepseek-harness-anatomy/
 .history/
 .vscode/
