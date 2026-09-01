@@ -18,6 +18,9 @@ inject = []
 class LocalShellService(ShellService):
     """在本地用 subprocess 执行命令。[教学简化] 无沙箱，安全边界交 guard 层。"""
 
+    def __init__(self, ctx):
+        super().__init__(ctx, "shell")  # 构造即注册 ctx.shell
+
     async def execute(self, request: ShellRequest) -> ShellResult:
         proc = subprocess.run(
             request.cmd,
@@ -34,4 +37,4 @@ class LocalShellService(ShellService):
 
 
 def apply(ctx):
-    ctx.provide("shell", LocalShellService(ctx))
+    LocalShellService(ctx)  # 构造即注册 ctx.shell

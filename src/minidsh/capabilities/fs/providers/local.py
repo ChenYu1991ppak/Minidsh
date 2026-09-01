@@ -15,6 +15,9 @@ inject = []
 class LocalFsService(FsService):
     """本地读文件。[教学简化] 无路径沙箱，安全边界交 guard 层。"""
 
+    def __init__(self, ctx):
+        super().__init__(ctx, "fs")  # 构造即注册 ctx.fs
+
     async def execute(self, request: FsRequest) -> FsResult:
         with open(request.path, encoding="utf-8") as f:
             content = f.read()
@@ -22,4 +25,4 @@ class LocalFsService(FsService):
 
 
 def apply(ctx):
-    ctx.provide("fs", LocalFsService(ctx))
+    LocalFsService(ctx)  # 构造即注册 ctx.fs

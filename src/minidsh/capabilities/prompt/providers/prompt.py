@@ -8,4 +8,4 @@ inject: list[str] = []
 
 
 def apply(ctx):
-    ctx.provide("systemPrompt", SystemPromptService(ctx))
+    SystemPromptService(ctx)  # 构造即注册 ctx.systemPrompt

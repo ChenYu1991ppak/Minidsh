@@ -21,16 +21,18 @@ inject = ["config"]
 
 
 class OpenAILlm(LlmRuntime):
-    """OpenAI 兼容的流式 LLM。由 ``minidsh.llm-openai`` provide 到 ctx.llm。"""
+    """OpenAI 兼容的流式 LLM。构造即注册（``ctx.llm``）。"""
 
     def __init__(
         self,
+        ctx,
         *,
         model: str = "deepseek-chat",
         api_key: str | None = None,
         base_url: str | None = None,
         client: Any | None = None,
     ):
+        super().__init__(ctx, "llm")
         if client is not None:
             self._client = client
         else:
@@ -106,7 +108,7 @@ class OpenAILlm(LlmRuntime):
 
 
 def apply(ctx):
-    """provide 一个 OpenAILlm 到 ctx.llm，配置读 ctx.config（当前模型）。"""
+    """构造 OpenAILlm（自注册 ctx.llm），配置读 ctx.config（当前模型）。"""
     cfg = ctx.config
     model = cfg.current
     if model is None:
@@ -119,7 +121,4 @@ def apply(ctx):
             f"模型 {model.id!r} 未配置 url（OpenAI 兼容 base_url）：该模型不可用。"
             "请在 models.json 里为该模型填写 url 字段。"
         )
-    ctx.provide(
-        "llm",
-        OpenAILlm(model=model.id, api_key=model.api_key or None, base_url=model.url),
-    )
+    OpenAILlm(ctx, model=model.id, api_key=model.api_key or None, base_url=model.url)

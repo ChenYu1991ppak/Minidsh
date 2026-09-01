@@ -8,11 +8,8 @@ inject = ["sessions", "llm", "config"]
 
 
 def apply(ctx):
-    ctx.provide(
-        "compaction",
-        CompactionEngine(
-            ctx,
-            context_window=ctx.config.context_window,
-            threshold_ratio=ctx.config.compaction_threshold_ratio,
-        ),
+    CompactionEngine(  # 构造即注册 ctx.compaction
+        ctx,
+        context_window=ctx.config.context_window,
+        threshold_ratio=ctx.config.compaction_threshold_ratio,
     )

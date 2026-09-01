@@ -8,4 +8,4 @@ inject = ["sessions", "llm", "systemPrompt", "tools"]
 
 
 def apply(ctx):
-    ctx.provide("agent_loop", AgentLoop(ctx))
+    AgentLoop(ctx)  # 构造即注册 ctx.agent_loop
