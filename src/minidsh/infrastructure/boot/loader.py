@@ -18,7 +18,7 @@ from ..bundle import PluginRef, build_context
 from ..packaging import entry_point_resolver
 from ..profile import resolve_profile
 from ..config.providers import config as config_plugin
-from ...capabilities.workspace.providers import root as root_plugin
+from ...packages.services.workspace.providers import root as root_plugin
 
 __all__ = ["load_project"]
 

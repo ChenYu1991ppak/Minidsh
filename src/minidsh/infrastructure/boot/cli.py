@@ -16,7 +16,7 @@ import asyncio
 import sys
 
 from .loader import load_project
-from ...capabilities.session.reporting import replay_session, load_session_events
+from ...packages.services.session.reporting import replay_session, load_session_events
 
 __all__ = ["main"]
 
