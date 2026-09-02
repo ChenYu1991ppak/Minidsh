@@ -11,8 +11,8 @@ loop 订阅该事件，产会话事件 ``skill-loaded``（跨层桥接职责在 
 """
 from __future__ import annotations
 
-from ..definition import SkillRegistry
-from ...tool_runtime.runtime import ToolDefinition, ToolOutput
+from .definition import SkillRegistry
+from ..tool_runtime.runtime import ToolDefinition, ToolOutput
 
 __all__ = ["make_catalog_tool"]
 

@@ -9,7 +9,7 @@ from .definition import (
     SkillRegistry,
     parse_skill_file,
 )
-from .tools.catalog import make_catalog_tool
+from .catalog import make_catalog_tool
 
 __all__ = [
     "SkillSummary",

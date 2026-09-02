@@ -8,7 +8,7 @@ from .definition import (
     SubagentRegistry,
     InProcessSubagentProvider,
 )
-from .tools.task import make_task_tool
+from .task import make_task_tool
 
 __all__ = [
     "SubagentError",

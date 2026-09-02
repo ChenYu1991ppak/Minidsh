@@ -12,8 +12,8 @@ provider 选择：``fork=true`` → ``fork`` 传输（继承父上下文）；�
 """
 from __future__ import annotations
 
-from ..definition import SubagentRegistry, SubagentError
-from ...tool_runtime.runtime import ToolDefinition, ToolOutput
+from .definition import SubagentRegistry, SubagentError
+from ..tool_runtime.runtime import ToolDefinition, ToolOutput
 
 __all__ = ["make_task_tool"]
 
