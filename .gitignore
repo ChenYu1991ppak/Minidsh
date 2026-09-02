@@ -29,6 +29,10 @@ examples/
 *.md
 tasks/
 
+# 例外：doc/ 下的规则手册随 git 分发（构建原则是迭代依据，必须进库）
+!doc/
+!doc/**
+
 # 参考仓库：独立 git 仓库
 deepseek-harness-anatomy/
 .history/
