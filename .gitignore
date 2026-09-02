@@ -33,6 +33,13 @@ tasks/
 !doc/
 !doc/**
 
+# 例外：tests/ 进版本控制（验证全部能力的测试套件是迭代依据；pip 包仍只含 src/）
+!tests/
+!tests/**
+# 但 tests 内的缓存产物仍要忽略（需显式 re-ignore，释放规则会连带放行）
+**/__pycache__/
+*.py[cod]
+
 # 参考仓库：独立 git 仓库
 deepseek-harness-anatomy/
 .history/

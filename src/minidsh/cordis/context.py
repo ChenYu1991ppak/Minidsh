@@ -19,9 +19,16 @@ __all__ = ["Context"]
 
 
 class Context(EventMethods):
-    """插件执行环境。内核同步、单线程（spec §11-5）。"""
+    """插件执行环境。内核同步、单线程（spec §11-5）。
 
-    def __init__(self):
+    ``parent`` 形参开启**子容器**（对应真实 Cordis 的 ctx.extend/fork）：子容器
+    的读取沿 parent 链回退（服务继承看得见祖先），写入（provide/effect/plugin）
+    只落自己——这是 scope 库原语的根基（packages/core/scope）。父为 None 时行为
+    与旧版完全一致。
+    """
+
+    def __init__(self, parent: "Context | None" = None):
+        self._parent = parent
         setattr(self, Symbols.services, {})    # 服务表：name → 实例
         setattr(self, Symbols.events, {})      # 监听器表：事件名 → [listener]
         setattr(self, Symbols.dispose, False)  # dispose 标记
@@ -29,15 +36,30 @@ class Context(EventMethods):
         self._pending = []     # 依赖未满足、等待加载的 fiber
         self._disposers = []   # 根级 effect 的清理函数
 
+    def extend(self, **extensions) -> "Context":
+        """铸造一个继承读、孤立写的子容器；``extensions`` 作为标签属性直接挂上。
+
+        对应真实 Cordis 的 ``ctx.extend({...})``（scope/index.ts 用它打 scope 标签）。
+        """
+        child = Context(parent=self)
+        for key, value in extensions.items():
+            setattr(child, key, value)
+        return child
+
     # ---------- 服务解析 ----------
 
     def __getattr__(self, name):
-        """普通属性查找失败时才调用：一切非内部属性都按服务读取。"""
+        """普通属性查找失败时才调用：一切非内部属性都按服务读取。
+
+        自身的服务表查不到则沿 parent 链向上读（子容器继承祖先服务）。
+        """
         if name.startswith("_"):
             raise AttributeError(name)
         services = getattr(self, Symbols.services)
         if name in services:
             return services[name]
+        if self._parent is not None:
+            return getattr(self._parent, name)   # 祖先或更上级含该服务时命中；否则抛 ServiceNotFoundError
         raise ServiceNotFoundError(name)
 
     def provide(self, name, value):
@@ -59,15 +81,27 @@ class Context(EventMethods):
 
     # ---------- 依赖注入：inject 依赖检查 ----------
 
+    def _lookup(self, name):
+        """沿自己 → parent 链查找服务名，返回 (found, value)；用于 probe/has/inject。
+
+        子容器读继承祖先服务（scope 的可见性根基）；写入始终只落自己的服务表。
+        """
+        services = getattr(self, Symbols.services)
+        if name in services:
+            return True, services[name]
+        if self._parent is not None:
+            return self._parent._lookup(name)
+        return False, None
+
     def probe(self, name):
         """显式按名查服务，任意名字（含 `tools/bash`、`llm/openai` 等非标识符）可查。
 
         `ctx.<ident>` 属性路由仅覆盖合法标识符名；非标识符名一律经 ``probe`` 显式读取。
-        找不到抛 ``ServiceNotFoundError``。
+        找不到抛 ``ServiceNotFoundError``。子容器沿 parent 链回退。
         """
-        services = getattr(self, Symbols.services)
-        if name in services:
-            return services[name]
+        found, value = self._lookup(name)
+        if found:
+            return value
         raise ServiceNotFoundError(name)
 
     def service(self, name):
@@ -78,14 +112,15 @@ class Context(EventMethods):
         return self.probe(name)
 
     def has(self, name):
-        """服务表是否存在该名（不发异常）。"""
-        return name in getattr(self, Symbols.services)
+        """服务表是否存在该名（不发异常）。子容器沿 parent 链回退。"""
+        return self._lookup(name)[0]
 
     def inject(self, names, callback):
         """严格解析依赖后执行 callback；任一依赖缺失即抛 ``ServiceNotFoundError``。
 
         与插件化 deferral（Fiber PENDING→ACTIVE）互补：前者「齐备才加载」，这里
         是「现在就要」的消费方写法——解析出的服务按声明顺序作为位置参数传入。
+        子容器未持有的名字沿 parent 链解析（继承语义）。
         抛出的错误信息内含缺失的依赖名（可能多个）。
         """
         missing = [n for n in names if not self.has(n)]
