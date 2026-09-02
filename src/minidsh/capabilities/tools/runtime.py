@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 import inspect
 from typing import Any, Awaitable, Callable
 
-from ...cordis import Service
+from ...cordis import CapabilityProvider
 from .validate import validate_schema, SchemaError
 
 __all__ = [
@@ -173,11 +173,12 @@ class ToolLayer:
 # ---------------------------------------------------------------------------
 
 
-class ToolRuntime(Service):
+class ToolRuntime(CapabilityProvider):
     """ctx.tools：注册面 + 展示面 + 执行面三合一（index.ts:787）。"""
 
-    def __init__(self, ctx):
-        super().__init__(ctx, "tools")
+    service_name = "tools"
+
+    def _init(self, ctx):
         self._layer = ToolLayer()
         self._pre_execute = []
         self._execute = []

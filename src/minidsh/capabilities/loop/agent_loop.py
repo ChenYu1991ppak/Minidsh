@@ -15,11 +15,11 @@ from __future__ import annotations
 
 import json
 
-from ...cordis import Service
-from ...capabilities.session import Session
-from ...capabilities.tools import ToolExecution
+from ...cordis import CapabilityProvider
+from ..session import Session
+from ..tools import ToolExecution
 from .inbox import Inbox
-from ...capabilities.llm import Chunk
+from ..llm import Chunk
 
 __all__ = ["AgentLoop", "ReactLoopAgent"]
 
@@ -180,7 +180,7 @@ class ReactLoopAgent:
             )
 
 
-class AgentLoop(Service):
+class AgentLoop(CapabilityProvider):
     """agent-loop 服务（index.ts:296）：被容器装配，create 产出 agent。
 
     inject 对齐 static inject（index.ts:296-297）：sessions/llm/systemPrompt/tools
@@ -188,9 +188,9 @@ class AgentLoop(Service):
     """
 
     inject = ["sessions", "llm", "systemPrompt", "tools"]
+    service_name = "agent_loop"
 
-    def __init__(self, ctx):
-        super().__init__(ctx, "agent_loop")
+    def _init(self, ctx):
         self.agents = {}
 
     def create(self, **options) -> ReactLoopAgent:

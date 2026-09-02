@@ -77,7 +77,7 @@ class InProcessSubagentProvider(SubagentProvider):
         self.inherits_parent_context = inherits_parent_context
 
     async def run(self, ctx, agent_def: dict, task: str, depth: int) -> SubagentResult:
-        from ...applications.loop import ReactLoopAgent
+        from ..loop import ReactLoopAgent
 
         # 独立会话 + origin 元数据
         child_session = ctx.sessions.create()
