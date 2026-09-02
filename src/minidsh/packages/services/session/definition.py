@@ -6,11 +6,12 @@
 from __future__ import annotations
 
 from .event import SessionEvent, SessionEventType
-from .store import Session, SessionStore
+from .store import Session, SessionHeader, SessionStore
 
 __all__ = [
     "Session",
     "SessionEvent",
     "SessionEventType",
+    "SessionHeader",
     "SessionStore",
 ]

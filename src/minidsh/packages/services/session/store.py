@@ -12,18 +12,38 @@
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from .event import SessionEvent, SessionEventType
 
-__all__ = ["Session", "SessionStore"]
+__all__ = ["Session", "SessionStore", "SessionHeader"]
+
+
+@dataclass(frozen=True)
+class SessionHeader:
+    """会话不可变身份元数据（对齐官方 SessionHeader）。
+
+    id = 会话 id；meta = 不可变元数据（cwd / parentSession / source / origin）。
+    投影单元的 ``init(header)`` 以此为入参，是「空日志」折叠的种子。
+    """
+
+    id: str
+    meta: dict = field(default_factory=dict)
 
 
 class Session:
     """append-only 事件日志。seq == len(log)，事件创建后不可改。"""
 
-    def __init__(self, ctx, session_id: str):
+    def __init__(self, ctx, session_id: str, meta: dict | None = None):
         self.ctx = ctx
         self.id = session_id
+        self.meta = dict(meta or {})
         self.log: list[SessionEvent] = []
+
+    @property
+    def header(self) -> SessionHeader:
+        """会话身份的不变元数据（供投影 init）。"""
+        return SessionHeader(self.id, dict(self.meta))
 
     def append(self, type: str, payload: dict | None = None):
         """追加一条事件（index.ts:604-653）：seq == len(log)，广播 ``session/event``。
@@ -64,10 +84,10 @@ class SessionStore:
         self._sessions: dict[str, Session] = {}
         self._next_id = 0
 
-    def create(self) -> Session:
+    def create(self, meta: dict | None = None) -> Session:
         """创建一个新会话并登记。session_id = "session-0001" 式自增。"""
         self._next_id += 1
-        session = Session(self.ctx, f"session-{self._next_id:04d}")
+        session = Session(self.ctx, f"session-{self._next_id:04d}", meta=meta)
         self._sessions[session.id] = session
         return session
 
