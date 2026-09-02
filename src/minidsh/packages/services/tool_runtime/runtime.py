@@ -25,6 +25,7 @@ import inspect
 from typing import Any, Awaitable, Callable
 
 from minidsh.cordis import CapabilityProvider
+from minidsh.packages.core.scope import ScopedLayers
 from .validate import validate_schema, SchemaError
 
 __all__ = [
@@ -167,6 +168,10 @@ class ToolLayer:
                 return reason
         return None
 
+    def isEmpty(self):
+        """聚合层判空（ScopedLayers 回收依据）：工具 + 守卫 + 模式全空才算空。"""
+        return not self.tools and not self.guards and not self.modes
+
 
 # ---------------------------------------------------------------------------
 # 运行时
@@ -174,12 +179,17 @@ class ToolLayer:
 
 
 class ToolRuntime(CapabilityProvider):
-    """ctx.tools：注册面 + 展示面 + 执行面三合一（index.ts:787）。"""
+    """ctx.tools：注册面 + 展示面 + 执行面三合一（index.ts:787）。
+
+    [教学简化 → 对齐 ch09] 工具/守卫/模式存进 ``ScopedLayers``（全局层 + 各 scope 精确层）。
+    默认（无显式 scope）时注册到全局层，行为与旧单层完全一致；per-agent 隔离经
+    ``scoped_register(scope_ctx, ...)`` 或传入 ``scope_key`` 落到精确层。
+    """
 
     service_name = "tools"
 
     def _init(self, ctx):
-        self._layer = ToolLayer()
+        self._layers = ScopedLayers(create_layer=lambda scope: ToolLayer())
         self._pre_execute = []
         self._execute = []
         self._post_execute = []
@@ -187,37 +197,106 @@ class ToolRuntime(CapabilityProvider):
 
     # ---------- 定义面 ----------
 
-    def register(self, definition: ToolDefinition):
-        """把工具写入作用域层并触发 tools/change，返回注销 disposer（index.ts:1037）。"""
+    def register(self, definition: ToolDefinition, scope_key=None):
+        """把工具写入作用域层并触发 tools/change，返回注销 disposer（index.ts:1037）。
+
+        ``scope_key`` 缺省 → 全局层（对齐旧行为）；显式 key → 该 scope 精确层（per-agent 隔离）。
+        """
         name = definition.name
-        self._layer.tools[name] = definition
-        self.ctx.emit("tools/change", {"name": name, "op": "add"})
 
-        def dispose():
-            self._layer.tools.pop(name, None)
-            self.ctx.emit("tools/change", {"name": name, "op": "remove"})
+        def add(layer: ToolLayer):
+            layer.tools[name] = definition
+            self.ctx.emit("tools/change", {"name": name, "op": "add"})
 
-        return self.ctx.effect(lambda: dispose, label=f"tool:{name}")
+            def undo():
+                layer.tools.pop(name, None)
+                self.ctx.emit("tools/change", {"name": name, "op": "remove"})
 
-    def guard(self, guard_fn):
+            return undo
+
+        return self._layers.effect(self.ctx, add, label=f"tool:{name}", scope=scope_key)
+
+    def scoped_register(self, scope_ctx, definition: ToolDefinition):
+        """在某个 scope ctx 的精确层注册工具（per-agent；M7/M9 用）。
+
+        effect 归属 scope_ctx 的 fiber（scope.dispose 时自动撤回），层由
+        ``scopeOf(scope_ctx)`` 选定。
+        """
+        from minidsh.packages.core.scope import scopeOf
+
+        name = definition.name
+
+        def add(layer: ToolLayer):
+            layer.tools[name] = definition
+            self.ctx.emit("tools/change", {"name": name, "op": "add"})
+
+            def undo():
+                layer.tools.pop(name, None)
+                self.ctx.emit("tools/change", {"name": name, "op": "remove"})
+
+            return undo
+
+        return self._layers.effect(scope_ctx, add, label=f"tool:{name}", scope=scopeOf(scope_ctx))
+
+    def guard(self, guard_fn, scope_key=None):
         """注册单调守卫：只能拒绝、不能放行（index.ts:1110）。"""
-        self._layer.guards.append(guard_fn)
+        def add(layer: ToolLayer):
+            layer.guards.append(guard_fn)
 
-    def present_as(self, name, mode):
+            def undo():
+                if guard_fn in layer.guards:
+                    layer.guards.remove(guard_fn)
+
+            return undo
+
+        return self._layers.effect(self.ctx, add, label="tool-guard", scope=scope_key)
+
+    def present_as(self, name, mode, scope_key=None):
         """设置工具的展示/执行模式 native/code/both（index.ts:946）。"""
-        self._layer.modes[name] = mode
+        def add(layer: ToolLayer):
+            prev = layer.modes.get(name, "native")
+            layer.modes[name] = mode
 
-    def mode_for(self, name):
-        return self._layer.modes.get(name, "native")
+            def undo():
+                layer.modes[name] = prev
 
-    def get(self, name):
-        return self._layer.tools.get(name)
+            return undo
+
+        return self._layers.effect(self.ctx, add, label=f"tool-mode:{name}", scope=scope_key)
+
+    def mode_for(self, name, scope_key=None):
+        layer = self._effective_layer(scope_key)
+        return layer.modes.get(name, "native")
+
+    def get(self, name, scope_key=None):
+        layer = self._effective_layer(scope_key)
+        return layer.tools.get(name)
+
+    def _effective_layer(self, scope_key=None):
+        """合成可见层：全局层 + scope 链遮蔽（最近者赢名字）。返回一个只读视图对象。"""
+        global_layer = self._layers.global_layer
+        shadow = {}
+        tools = dict(global_layer.tools)
+        modes = dict(global_layer.modes)
+        guards = list(global_layer.guards)
+        for layer in self._layers.chain_layers(scope_key):
+            tools.update(layer.tools)
+            modes.update(layer.modes)
+            guards.extend(layer.guards)
+        view = ToolLayer(tools=tools, guards=guards, modes=modes)
+        return view
 
     # ---------- 展示面 ----------
 
     def view(self):
-        """可见工具集：模式非 code 的工具才向模型暴露 schema。"""
-        return [d for d in self._layer.tools.values() if self.mode_for(d.name) != "code"]
+        """可见工具集：模式非 code 的工具才向模型暴露 schema（全局层，无 scope 视图）。"""
+        return self._view_for(None)
+
+    def _view_for(self, scope_key):
+        view = self._effective_layer(scope_key)
+        return [
+            d for d in view.tools.values() if view.modes.get(d.name, "native") != "code"
+        ]
 
     def schema_of(self, definition: ToolDefinition):
         """投影成给模型看的白名单：{name, description, parameters}。"""
@@ -283,7 +362,8 @@ class ToolRuntime(CapabilityProvider):
             self._pre_execute, (exec_,), fallback=PreToolDecision.allow
         )
         if gate.kind == "allow":
-            reason = self._layer.guard_reason(exec_)
+            view = self._effective_layer()
+            reason = view.guard_reason(exec_)
             if reason is not None:
                 return PreToolDecision.deny(reason)
         return gate
@@ -296,7 +376,8 @@ class ToolRuntime(CapabilityProvider):
 
     async def _dispatch_body(self, exec_: ToolExecution):
         """真正调用工具 execute → 校验规范值 → output.render 包装成 ToolResult。"""
-        tool = self._layer.tools.get(exec_.name)
+        view = self._effective_layer()
+        tool = view.tools.get(exec_.name)
         if tool is None:
             return ToolResult(content=f"unknown tool: {exec_.name}", is_error=True)
 
