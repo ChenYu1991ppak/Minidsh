@@ -33,7 +33,8 @@ minidsh = "minidsh.infrastructure.boot.cli:main"
 "minidsh.loop" = "minidsh.capabilities.loop.providers.loop"
 "minidsh.compaction" = "minidsh.capabilities.compaction.providers.compaction"
 "minidsh.trace-render" = "minidsh.capabilities.session.reporting.trace_render"
-"minidsh.persistence" = "minidsh.capabilities.session.providers.persistence"
+"minidsh.persistence-jsonl" = "minidsh.capabilities.persistence.providers.jsonl"
+"minidsh.persistence-sqlite" = "minidsh.capabilities.persistence.providers.sqlite"
 
 [tool.setuptools.dynamic]
 version = {attr = "minidsh.__version__"}

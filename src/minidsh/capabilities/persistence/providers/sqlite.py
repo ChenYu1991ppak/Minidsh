@@ -16,8 +16,8 @@ import json
 import sqlite3
 from pathlib import Path
 
-from ..event import SessionEvent
-from ..persistence import PersistenceBackend
+from ...session.event import SessionEvent
+from ..definition import PersistenceBackend
 
 __all__ = ["SqliteSessionPersistence"]
 
@@ -91,3 +91,15 @@ class SqliteSessionPersistence(PersistenceBackend):
     def list(self) -> list[str]:
         rows = self._conn.execute("SELECT session_id FROM sessions ORDER BY session_id").fetchall()
         return [r[0] for r in rows]
+
+# ---- provider 插件：提供 ctx.sessionPersistence（sqlite 后端）----
+from ..definition import PersistenceCoordinator
+
+name = "minidsh.persistence-sqlite"
+inject = ["sessions", "root"]
+
+
+def apply(ctx):
+    backend = SqliteSessionPersistence(ctx.root / ".dsh")
+    ctx.provide("sessionPersistence", PersistenceCoordinator(ctx, backend))
+    ctx._persistence_backend = backend

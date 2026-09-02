@@ -18,8 +18,8 @@ import json
 import os
 from pathlib import Path
 
-from ..event import SessionEvent
-from ..persistence import PersistenceBackend
+from ...session.event import SessionEvent
+from ..definition import PersistenceBackend
 
 __all__ = ["JsonlSessionPersistence"]
 
@@ -64,3 +64,15 @@ class JsonlSessionPersistence(PersistenceBackend):
             for p in sorted(self.sessions_dir.glob("*.jsonl"))
             if p.is_file()
         ]
+
+# ---- provider 插件：提供 ctx.sessionPersistence（jsonl 后端）----
+from ..definition import PersistenceCoordinator
+
+name = "minidsh.persistence-jsonl"
+inject = ["sessions", "root"]
+
+
+def apply(ctx):
+    backend = JsonlSessionPersistence(ctx.root / ".dsh")
+    ctx.provide("sessionPersistence", PersistenceCoordinator(ctx, backend))
+    ctx._persistence_backend = backend

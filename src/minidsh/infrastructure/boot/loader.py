@@ -58,9 +58,35 @@ def load_project(
     else:
         entries = _profile_plugins(profile, root, argv_path, quiet)
 
+    # storage 覆盖：持久化 provider 是平级插件（jsonl/sqlite），CLI --storage 转成
+    # 「移除未选中的、追加选中的」——provider 选择走清单，不走进 provider 内部 if 分支。
+    if storage is not None:
+        entries = _select_persistence(entries, storage)
+
     # 统一 resolver：内置 base 与第三方插件同走 entry-point 发现（无 registry）
     resolver = extra_resolver if extra_resolver is not None else entry_point_resolver()
     return build_context(entries, resolver)
+
+
+_PERSISTENCE_PROVIDERS = {
+    "jsonl": "minidsh.persistence-jsonl",
+    "sqlite": "minidsh.persistence-sqlite",
+}
+
+
+def _select_persistence(entries: list[PluginRef], storage: str) -> list[PluginRef]:
+    """按所选后端（jsonl|sqlite）从激活清单里去掉其它持久化 provider、追加所选。
+
+    结果保序：原名单中非 persistence 的条目不变，选中的 persistence provider 追加到末尾。
+    """
+    if storage not in _PERSISTENCE_PROVIDERS:
+        return entries
+    chosen = _PERSISTENCE_PROVIDERS[storage]
+    others = {n for k, n in _PERSISTENCE_PROVIDERS.items() if k != storage}
+    filtered = [r for r in entries if r.name not in others]
+    if not any(r.name == chosen for r in filtered):
+        filtered.append(PluginRef(chosen))
+    return filtered
 
 
 def _profile_plugins(

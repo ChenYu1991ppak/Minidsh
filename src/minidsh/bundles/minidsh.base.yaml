@@ -17,4 +17,4 @@ plugins:
   - minidsh.loop
   - minidsh.compaction
   - minidsh.trace-render
-  - minidsh.persistence
+  - minidsh.persistence-jsonl

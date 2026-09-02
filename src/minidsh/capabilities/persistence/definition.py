@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from .event import SessionEvent
+from ..session.event import SessionEvent
 
 __all__ = [
     "SessionPersistence",
