@@ -13,12 +13,12 @@ from dataclasses import replace
 from pathlib import Path
 
 from ...cordis import Context
-from ...infrastructure.config import Config, resolve_config
-from ...infrastructure.bundle import PluginRef, build_context
-from ...infrastructure.packaging import entry_point_resolver
-from ...infrastructure.profile import resolve_profile
-from ...infrastructure.config.providers import config as config_plugin
-from ...applications.workspace.providers import root as root_plugin
+from ..config import Config, resolve_config
+from ..bundle import PluginRef, build_context
+from ..packaging import entry_point_resolver
+from ..profile import resolve_profile
+from ..config.providers import config as config_plugin
+from ...capabilities.workspace.providers import root as root_plugin
 
 __all__ = ["load_project"]
 

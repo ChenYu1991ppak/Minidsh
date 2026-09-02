@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ...capabilities.session import SessionEvent
-from ...capabilities.session.providers.jsonl import JsonlSessionPersistence
-from ...capabilities.session.providers.sqlite import SqliteSessionPersistence
+from ..event import SessionEvent
+from ..providers.jsonl import JsonlSessionPersistence
+from ..providers.sqlite import SqliteSessionPersistence
 from .renderer import render_event
 
 __all__ = ["load_session_events", "replay_session"]

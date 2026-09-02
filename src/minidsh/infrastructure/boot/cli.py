@@ -16,7 +16,7 @@ import asyncio
 import sys
 
 from .loader import load_project
-from ..trace import replay_session, load_session_events
+from ...capabilities.session.reporting import replay_session, load_session_events
 
 __all__ = ["main"]
 
@@ -112,7 +112,7 @@ def _cmd_replay(args) -> int:
 
 
 def _cmd_plugin(args) -> int:
-    from ...infrastructure.packaging import plugin_add, plugin_remove, plugin_list
+    from ..packaging import plugin_add, plugin_remove, plugin_list
 
     if args.plugin_action == "add":
         return plugin_add(args.pkg)

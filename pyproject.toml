@@ -13,12 +13,12 @@ dependencies = ["openai>=1.0", "pyyaml>=6.0"]
 test = ["pytest>=7", "pytest-asyncio", "pytest-cov"]
 
 [project.scripts]
-minidsh = "minidsh.applications.workspace.cli:main"
+minidsh = "minidsh.infrastructure.boot.cli:main"
 
 # 内置 base 插件 + 未来第三方插件共用的发现组：条目名 = 插件名，值 = 可 import 模块
 [project.entry-points."minidsh.plugins"]
 "minidsh.config" = "minidsh.infrastructure.config.providers.config"
-"minidsh.root" = "minidsh.applications.workspace.providers.root"
+"minidsh.root" = "minidsh.capabilities.workspace.providers.root"
 "minidsh.sessions" = "minidsh.capabilities.session.providers.sessions"
 "minidsh.prompt" = "minidsh.capabilities.prompt.providers.prompt"
 "minidsh.tools" = "minidsh.capabilities.tools.providers.tools"
@@ -32,7 +32,7 @@ minidsh = "minidsh.applications.workspace.cli:main"
 "minidsh.agents-md" = "minidsh.capabilities.prompt.providers.agents_md"
 "minidsh.loop" = "minidsh.capabilities.loop.providers.loop"
 "minidsh.compaction" = "minidsh.capabilities.compaction.providers.compaction"
-"minidsh.trace-render" = "minidsh.applications.trace.providers.trace_render"
+"minidsh.trace-render" = "minidsh.capabilities.session.reporting.trace_render"
 "minidsh.persistence" = "minidsh.capabilities.session.providers.persistence"
 
 [tool.setuptools.dynamic]

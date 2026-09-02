@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ...capabilities.session import SessionEvent
+from ..event import SessionEvent
 
 __all__ = ["ConsoleRenderer", "render_event"]
 
