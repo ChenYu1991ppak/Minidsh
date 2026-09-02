@@ -1,36 +1,54 @@
-"""shell 的本地 provider（三角色的「提供方」）：subprocess 执行命令。
+"""shell 的本地 provider：消费 subprocess 执行 bash 命令（构造即注册 ctx.shell）。
 
-对齐官方 dsh-bash-local：实现 ShellService，经 module 插件 provide 到 ctx.shell。
-provider 只 provide 服务；把「执行」暴露成工具是 consumer（tool-bash）的职责。
+源码对应：dsh-bash-local（shell 是 subprocess 的 consumer，用 collect 批量输出）。
+
+三角色的「提供方」：实现 ShellService，把一条 bash 命令包装成
+``["/bin/bash", "-c", cmd]`` 交给 ``ctx.subprocess``（argv 绝不 shell 解释），再从
+collected 输出填回 ShellResult。
+
+[教学简化] 相对官方：
+- cwd 用父进程 cwd（``os.getcwd()``），贴现无 workspace 入参（官方来自调用会话不可变 cwd）；
+- deadline 由本 consumer 自己持有：``asyncio.wait_for`` 超时即 ``handle.terminate()``
+  （官方「caller owns deadlines」，subprocess seam 只反应 abort）。
 """
 from __future__ import annotations
 
-import subprocess
+import asyncio
+import os
 
 from ..definition import ShellRequest, ShellResult, ShellService
 from minidsh.cordis import CapabilityProvider
+from minidsh.packages.services.subprocess.definition import SubprocessSpawnSpec, SubprocessStdio
 
 __all__ = ["LocalShellService"]
 
 name = "minidsh.shell-local"
-inject = []
+inject = ["subprocess"]
 
 
 class LocalShellService(ShellService, CapabilityProvider):
-    """在本地用 subprocess 执行命令。[教学简化] 无沙箱，安全边界交 guard 层。"""
+    """本地 bash 执行器：命令经 ctx.subprocess 跑，collect 批量输出。"""
 
     async def execute(self, request: ShellRequest) -> ShellResult:
-        proc = subprocess.run(
-            request.cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=request.timeout_seconds,
+        spec = SubprocessSpawnSpec(
+            argv=["/bin/bash", "-c", request.cmd],
+            cwd=os.getcwd(),
+            stdio=SubprocessStdio(stdout="collect", stderr="collect"),
         )
+        handle = await self.ctx.subprocess.spawn(spec)
+        try:
+            outcome = await asyncio.wait_for(handle.done, timeout=request.timeout_seconds)
+        except asyncio.TimeoutError:
+            handle.terminate()
+            return ShellResult(stdout="", stderr="command timed out", exit_code=-1)
+
+        collected = handle.collected
+        stdout = collected.get("stdout")
+        stderr = collected.get("stderr")
         return ShellResult(
-            stdout=proc.stdout or "",
-            stderr=proc.stderr or "",
-            exit_code=proc.returncode,
+            stdout=stdout.text if stdout else "",
+            stderr=stderr.text if stderr else "",
+            exit_code=outcome.exit_code or 0,
         )
 
 
