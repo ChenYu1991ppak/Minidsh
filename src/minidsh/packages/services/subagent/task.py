@@ -33,6 +33,12 @@ def make_task_tool(subagents: SubagentRegistry) -> ToolDefinition:
     """构造 task 工具，闭包持有 ``ctx.subagents``。"""
 
     def _parent_session(ctx):
+        # 父会话定位：ctx.agents 发起者优先（M9），_session_stack 回退
+        agents = getattr(ctx, "agents", None)
+        if agents is not None and agents.initiator is not None:
+            session = getattr(agents.initiator, "session", None)
+            if session is not None:
+                return session
         stack = getattr(ctx, "_session_stack", None)
         return stack[-1] if stack else None
 

@@ -71,8 +71,15 @@ class ReactLoopAgent:
     # ---------- 驱动 ----------
 
     async def run(self):
-        """处理 inbox 中全部消息，直到清空。运行期间把当前会话压入 ctx 会话栈，
-        供 subagent 委派桥接「父会话」定位（选中的子 agent 委派在父 timeline 记录 spawn/result）。"""
+        """处理 inbox 中全部消息，直到清空。运行期间把当前 agent 作为 ctx.agents 发起者
+        （withInitiator），供 subagent 委派桥接「父会话」定位（M9 官方机制，替换 _session_stack）。"""
+        agents = getattr(self.ctx, "agents", None)
+        if agents is not None:
+            with agents.with_initiator(getattr(self, "_public", None) or self):
+                while self.inbox.has_pending:
+                    await self.turn()
+            return
+        # 回退：无 agents 服务（headless 测试）用旧 _session_stack
         stack = getattr(self.ctx, "_session_stack", None)
         if stack is None:
             stack = []
@@ -184,7 +191,11 @@ class AgentLoop(CapabilityProvider):
     """agent-loop 服务（index.ts:296）：被容器装配，create 产出 agent。
 
     inject 对齐 static inject（index.ts:296-297）：sessions/llm/systemPrompt/tools
-    全提供后才加载。
+    全提供后才加载。经 ctx.agents.setFactory 注册为唯一 AgentFactory——消费方用
+    ctx.agents，不依赖本具体包（loop 可替换，M2/M9 官方机制）。
+
+    [教学简化] create 保持同步（内核同步；官方 createAgent 是 async），返回
+    ReactLoopAgent；登记到 ctx.agents（若已装配），否则退回自身 dict（无 agents 能力时）。
     """
 
     inject = ["sessions", "llm", "systemPrompt", "tools"]
@@ -192,14 +203,53 @@ class AgentLoop(CapabilityProvider):
 
     def _init(self, ctx):
         self.agents = {}
+        self._register_factory()
+
+    def _register_factory(self):
+        """向 ctx.agents 注册本 loop 为 AgentFactory（若 agents 服务已装配）。
+
+        loop 是唯一工厂实现：消费方调 ctx.agents.create/resume 时经本工厂真正建
+        ReactLoopAgent。无 agents 服务（headless 测试装配）则跳过——create 仍走自身。
+        """
+        ctx = self.ctx
+        if not ctx.has("agents"):
+            return
+        from ..agents import AgentFactory, AgentHandle, Agent as PublicAgent
+
+        loop = self
+
+        class LoopAgentFactory(AgentFactory):
+            async def create_agent(self, owner_ctx, options):
+                owner = owner_ctx if owner_ctx is not None else loop.ctx
+                session = owner.sessions.create()
+                agent = ReactLoopAgent(owner, session, options)
+                loop.agents[session.id] = agent
+                return AgentHandle(PublicAgent(agent_id=session.id, session=session,
+                                               options=agent.options), lambda: None)
+
+            async def resume_agent(self, owner_ctx, options):
+                return await self.create_agent(owner_ctx, options)
+
+        ctx.agents.set_factory(LoopAgentFactory())
 
     def create(self, **options) -> ReactLoopAgent:
         """create：建 Session → 建 ReactLoopAgent → 登记 → 广播 agent/session-start。"""
         session = self.ctx.sessions.create()
         agent = ReactLoopAgent(self.ctx, session, options)
         self.agents[session.id] = agent
+        self._publish_agent(agent)
         self.ctx.emit("agent/session-start", {"session_id": session.id, "agent": agent})
         return agent
+
+    def _publish_agent(self, agent):
+        """登记到 ctx.agents（若已装配），使 agent 经官方注册表可见。"""
+        if self.ctx.has("agents"):
+            from ..agents import Agent as PublicAgent
+
+            pub = PublicAgent(agent_id=agent.session.id, session=agent.session,
+                              options=agent.options, scoped_ctx=None)
+            self.ctx.agents._publish(pub)
+            agent._public = pub
 
     def get(self, session_id: str) -> ReactLoopAgent | None:
         return self.agents.get(session_id)

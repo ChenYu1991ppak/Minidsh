@@ -105,12 +105,18 @@ class InProcessSubagentProvider(SubagentProvider):
             if section is not None:
                 section()
 
-        # 最终输出 = 最后一条 assistant-message 文本
+        # 最终输出 = 最后一条 assistant-message 文本。
+        # 优先经投影（M5/M9，ctx.sessionProjections.lastMessage 折叠）；无投影时回退
+        # 直接遍历日志（headless 装配）。
         final = ""
-        for ev in reversed(child_session.events()):
-            if ev.type == "assistant-message":
-                final = ev.payload.get("content", "")
-                break
+        projections = getattr(ctx, "sessionProjections", None)
+        if projections is not None and "lastMessage" in getattr(projections, "_units", {}):
+            final = (projections.state_of(child_session, "lastMessage") or {}).get("content", "")
+        else:
+            for ev in reversed(child_session.events()):
+                if ev.type == "assistant-message":
+                    final = ev.payload.get("content", "")
+                    break
         child_session.append("subagent-result", {"agent": agent_def.get("name", ""), "result": final})
 
         return SubagentResult(text=final)
@@ -174,10 +180,10 @@ class SubagentRegistry(CapabilityProvider):
         task_text = execution_args.get("task", "")
         max_depth = int(execution_args.get("max_depth", 3))
 
-        # 父会话 origin.depth 是深度真相源（父 loop 运行时压栈，见 ReactLoopAgent.run）
-        stack = getattr(self.ctx, "_session_stack", None) or []
-        parent_origin = getattr(stack[-1], "origin", None) if stack else None
-        parent_depth = (parent_origin or {}).get("depth", 0)
+        # 父会话 origin.depth 是深度真相源。定位父会话：优先 ctx.agents 发起者
+        # （withInitiator，M9 官方机制）；无 agents 服务时回退 _session_stack（headless）。
+        parent = self._parent_session()
+        parent_depth = (getattr(parent, "origin", None) or {}).get("depth", 0)
         child_depth = parent_depth + 1
         if child_depth > max_depth:
             raise SubagentError(
@@ -186,3 +192,14 @@ class SubagentRegistry(CapabilityProvider):
 
         agent_def["parent_messages"] = execution_args.get("parent_messages", [])
         return await provider.run(self.ctx, agent_def, task_text, child_depth)
+
+    def _parent_session(self):
+        """定位当前发起中的父会话（initiator 优先，_session_stack 回退）。"""
+        agents = getattr(self.ctx, "agents", None)
+        if agents is not None and agents.initiator is not None:
+            initiator = agents.initiator
+            session = getattr(initiator, "session", None)
+            if session is not None:
+                return session
+        stack = getattr(self.ctx, "_session_stack", None) or []
+        return stack[-1] if stack else None
