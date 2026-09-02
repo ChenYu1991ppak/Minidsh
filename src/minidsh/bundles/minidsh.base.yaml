@@ -7,12 +7,17 @@ plugins:
   - minidsh.prompt
   - minidsh.tools
   - minidsh.llm-openai
+  - minidsh.subprocess
+  - minidsh.sandbox
   - minidsh.shell-local
   - minidsh.fs-local
   - minidsh.tool-bash
   - minidsh.tool-read
   - minidsh.skills
   - minidsh.subagents
+  - minidsh.agents
+  - minidsh.projections
+  - minidsh.settings
   - minidsh.agents-md
   - minidsh.loop
   - minidsh.compaction

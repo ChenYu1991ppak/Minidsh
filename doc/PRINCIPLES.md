@@ -51,10 +51,21 @@ src/minidsh/
 │   ├── packaging/         #   entry-point 发现 + plugin 命令
 │   └── profile/           #   resolve_profile 覆盖链
 ├── packages/
-│   ├── services/          # 提供 ctx 服务的能力（definition + providers/ + 辅助）
-│   └── tools/             # 消费方工具（bash.py / read_file.py）
+│   ├── core/               # 共享「库原语」（非 ctx 服务，官方 core/scope 的对应）
+│   │   └── scope/          #   ScopeKey / Scope / ScopedLayers / createScope
+│   ├── services/           # 提供 ctx 服务的能力（definition + providers/ + 辅助）
+│   └── tools/              # 消费方工具（bash.py / read_file.py）
 └── bundles/               # 激活清单 minidsh.base.yaml
 ```
+
+**四个分区定位（勿混淆）**：
+
+| 目录 | 定位 | 官方对应 |
+|---|---|---|
+| `cordis/` | 内核 | `@cordisjs/core` |
+| `packages/core/` | **共享库原语（非服务）** | `packages/core/scope` |
+| `packages/services/` | 提供 ctx 服务 | `packages/core/{session,tools,agent,agent-loop}`+各 `packages/*` |
+| `packages/tools/` | 消费方工具 | `packages/*/tool-*` |
 
 **两个「tools」彻底分家（易混点，勿再合并）**：
 
@@ -159,10 +170,12 @@ def apply(ctx): ...
 ## 13. 测试规约
 
 - 栈：pytest + pytest-asyncio（`asyncio_mode=auto`）+ pytest-cov。`pythonpath=["src"]`。
-- **基线：全绿 + 高覆盖**（当前 244 tests / 94%）。改动外部行为必须同绿。
+- **基线：全绿 + 高覆盖**（当前 304 tests / 93%）。改动外部行为必须同绿。
 - **不用 StubLlm**：LLM 测试用 `tests/helpers/` 的 `make_fake_llm`（脚本化回放）+ `openai_fake`（假 client）。内核/loop 从不 import openai 类型。
+- **执行世界装配**：shell-local 依赖 subprocess，测试里用 `tests/helpers/world.py` 的 `plug_execution_world(ctx)` 一次插好 subprocess→shell→fs，再 plugin 工具。
+- **bwrap 测试 skip 门控**：sandbox 用 `pytest.mark.skipif(shutil.which("bwrap") is None)`，无 bwrap 环境跳过（不假装 full）。
 - **隔离 `MINIDSH_HOME`**：`tests/conftest.py` autouse fixture 把用户配置目录指向 tmp（防止读到真实 apiKey）。
-- 注意：**必须用 `python -m pytest` 跑**（裸 `pytest` 缺 `tests` 包路径，collect 会报 `No module named 'tests.helpers'`）。
+- 注意：**必须用 `python -m pytest` 跑**（裸 `pytest` 缺 `tests` 包路径，collect 会报 `No module named 'tests.helpers'`）。改了 pyproject 的 entry-point 后要 `pip install -e . --no-build-isolation` 才会刷新发现缓存。
 
 ## 14. 版本 / 发布 / 敏感信息
 
