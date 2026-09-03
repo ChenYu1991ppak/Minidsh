@@ -78,6 +78,10 @@ class PersistenceBackend(ABC):
     def list(self) -> list[str]:
         """枚举已持久化的 session_id 列表。"""
 
+    def latest(self) -> str | None:
+        """最近活动的 session_id（「默认接上次会话」用）；缺省 None 表示不支持。"""
+        return None
+
 
 # ---------------------------------------------------------------------------
 # 二、协调器 + 延迟写缓冲

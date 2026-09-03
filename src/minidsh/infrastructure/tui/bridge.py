@@ -33,19 +33,23 @@ def subscribe(ctx, post_message) -> None:
 async def drive(agent, queue: asyncio.Queue, ctx) -> None:
     """后台驱动：串行消费输入队列 → agent.send + agent.run。
 
-    退出（队列收到 None 哨兵）时 flush 会话 + 关闭持久化后端，保证落盘完整。
+    ``agent`` 可以是 agent 对象，或返回当前 agent 的可调用对象（支持运行时切换会话，
+    ``/new`` 换 agent 后驱动自动跟随）。退出（队列收到 None 哨兵）时 flush 会话 +
+    关闭持久化后端，保证落盘完整。
     """
+    get_agent = agent if callable(agent) else (lambda: agent)
     try:
         while True:
             text = await queue.get()
             if text is None:  # 哨兵：结束
                 queue.task_done()
                 break
-            agent.send(text)
-            await agent.run()
+            get_agent().send(text)
+            await get_agent().run()
             queue.task_done()
     finally:
-        ctx.emit("session/flush", agent.session.id)
+        current = get_agent()
+        ctx.emit("session/flush", current.session.id)
         backend = getattr(ctx, "_persistence_backend", None)
         if backend is not None and hasattr(backend, "close"):
             backend.close()

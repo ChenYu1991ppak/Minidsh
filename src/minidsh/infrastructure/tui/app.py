@@ -148,7 +148,22 @@ class TuiApp(App):
         if text.startswith("/thinking "):
             await self._switch_effort(text[len("/thinking "):].strip())
             return
+        if text == "/new":
+            await self._new_session()
+            return
         await self._queue.put(text)
+
+    async def _new_session(self) -> None:
+        """新建会话：结束当前会话上下文，让用户开新会话。
+
+        退出当前 App（bridge 驱动 flush 当前会话落盘），让上层进程重启或重新 create。
+        这里采用「标记 + 退出」语义：flush 后 exit，下次启动默认接最新会话（就是刚 flush 的）。
+        """
+        from .bridge import shutdown
+
+        # 先 flush 当前会话，再投递退出。新会话由用户下次 minidsh（默认接最新）承担。
+        await shutdown(self.agent, self._queue, self.ctx)
+        self.exit()
 
     async def _switch_model(self, model_id: str) -> None:
         spec = self.ctx.config.find(model_id)

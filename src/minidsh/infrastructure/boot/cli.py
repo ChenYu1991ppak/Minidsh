@@ -82,6 +82,8 @@ def _cmd_tui(args) -> int:
     )
     loop = ctx.probe("agent_loop")
     session_id = getattr(args, "session", None)
+    if session_id is None:
+        session_id = _latest_session(ctx)   # 默认接上一次会话（无则 None → 新会话）
     if session_id:
         agent = _resume_agent(ctx, loop, session_id)
         if agent is None:
@@ -90,6 +92,14 @@ def _cmd_tui(args) -> int:
         agent = loop.create()
     return _launch_tui_app(ctx, agent)
 
+
+def _latest_session(ctx) -> str | None:
+    """默认「接上次会话」：从持久化后端取最近活动的 session_id。"""
+    backend = getattr(ctx, "_persistence_backend", None)
+    latest = getattr(backend, "latest", None)
+    if latest is None:
+        return None
+    return latest()
 
 def _resume_agent(ctx, loop, session_id: str):
     """从持久化后端加载 session_id 的事件，恢复 agent；失败返回 None。"""

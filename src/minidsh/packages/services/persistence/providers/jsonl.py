@@ -65,6 +65,15 @@ class JsonlSessionPersistence(PersistenceBackend):
             if p.is_file()
         ]
 
+    def latest(self) -> str | None:
+        """最近修改的 jsonl 会话（「默认接上次会话」）。"""
+        if not self.sessions_dir.exists():
+            return None
+        files = [p for p in self.sessions_dir.glob("*.jsonl") if p.is_file()]
+        if not files:
+            return None
+        return max(files, key=lambda p: p.stat().st_mtime).stem
+
 # ---- provider 插件：提供 ctx.sessionPersistence（jsonl 后端）----
 from ..definition import PersistenceCoordinator
 

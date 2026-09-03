@@ -23,7 +23,8 @@ __all__ = ["SqliteSessionPersistence"]
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
-    session_id TEXT PRIMARY KEY
+    session_id TEXT PRIMARY KEY,
+    updated_at REAL
 );
 CREATE TABLE IF NOT EXISTS events (
     session_id TEXT NOT NULL,
@@ -43,6 +44,10 @@ class SqliteSessionPersistence(PersistenceBackend):
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.db_path)
         self._conn.executescript(_SCHEMA)
+        # 迁移兜底：旧库缺 updated_at 列（「默认接上次会话」新增）
+        cols = [r[1] for r in self._conn.execute("PRAGMA table_info(sessions)").fetchall()]
+        if "updated_at" not in cols:
+            self._conn.execute("ALTER TABLE sessions ADD COLUMN updated_at REAL")
         self._conn.commit()
 
     def close(self):
@@ -71,6 +76,11 @@ class SqliteSessionPersistence(PersistenceBackend):
                     for e in events
                 ],
             )
+            # 记录活动时间（latest 用，对称 jsonl 的 mtime）
+            self._conn.execute(
+                "UPDATE sessions SET updated_at = julianday('now') WHERE session_id = ?",
+                (session_id,),
+            )
 
     def load_stored(self, session_id: str) -> list[SessionEvent] | None:
         rows = self._conn.execute(
@@ -91,6 +101,13 @@ class SqliteSessionPersistence(PersistenceBackend):
     def list(self) -> list[str]:
         rows = self._conn.execute("SELECT session_id FROM sessions ORDER BY session_id").fetchall()
         return [r[0] for r in rows]
+
+    def latest(self) -> str | None:
+        """最近活动的 session_id（「默认接上次会话」）。"""
+        row = self._conn.execute(
+            "SELECT session_id FROM sessions ORDER BY updated_at DESC LIMIT 1"
+        ).fetchone()
+        return row[0] if row else None
 
 # ---- provider 插件：提供 ctx.sessionPersistence（sqlite 后端）----
 from ..definition import PersistenceCoordinator
