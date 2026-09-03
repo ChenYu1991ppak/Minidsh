@@ -174,6 +174,37 @@ async def test_model_slash_command_reconfigures_and_keeps_session():
 
 
 @pytest.mark.asyncio
+async def test_resume_seeds_history_into_transcript():
+    """重启恢复：历史事件经 mount seed 进转录（否则重启后空白）。"""
+    from minidsh.packages.services.session import SessionEvent
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+    # 预置历史事件（模拟 resume 后的会话）
+    session.log = [
+        SessionEvent(session.id, 0, "user-message", {"text": "旧问题"}),
+        SessionEvent(session.id, 1, "assistant-message", {"content": "旧答案", "stop_reason": "end-turn"}),
+    ]
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        transcript = app.query_one("#transcript")
+        assert "旧问题" in transcript.content
+        assert "旧答案" in transcript.content
+
+
+@pytest.mark.asyncio
 async def test_thinking_slash_command_reconfigures_effort():
     from textual.widgets import Input
 

@@ -112,10 +112,16 @@ class TuiApp(App):
         self._model = self._find_model()
         self._effort = self._find_effort()
         self._transcript = self.query_one("#transcript", _Transcript)
+        # 恢复会话：历史事件经 Session.adopt 装入但不重广播，这里显式 seed 进视图，
+        # 否则重启后转录空白（消息历史其实已接上）。
+        self._events = list(self.agent.session.events())
         self._update_status()
         subscribe(self.ctx, self.post_message)
         self._drive_task = asyncio.create_task(drive(self.agent, self._queue, self.ctx))
         self.set_focus(self.query_one("#input", Input))
+        # 有历史就立即渲染（不等新事件到达）
+        if self._events:
+            self._flush_transcript()
 
     def _refresh_status(self) -> None:
         self._model = self._find_model()
