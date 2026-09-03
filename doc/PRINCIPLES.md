@@ -44,12 +44,13 @@ session 事件流 / LLM 适配 / compaction，做到可运行、可观测、可�
 src/minidsh/
 ├── cordis/                # 内核，独立（等价官方 @deepseek-ai/cordis）
 │   └── capability.py      #   三角色抽象基类
-├── infrastructure/        # 支撑：不是能力，是装配/配置/打包
-│   ├── boot/              #   cli + load_project
+├── infrastructure/        # 支撑：不是能力，是装配/配置/打包/前端
+│   ├── boot/              #   cli（minidsh TUI 入口 / replay / plugin）+ load_project
 │   ├── bundle/            #   Bundle / PluginRef / merge / build_context
 │   ├── config/            #   Config/ModelSpec + resolve + files + providers
 │   ├── packaging/         #   entry-point 发现 + plugin 命令
-│   └── profile/           #   resolve_profile 覆盖链
+│   ├── profile/           #   resolve_profile 覆盖链
+│   └── tui/               #   交互式前端（transcript 视图模型 / Textual App / bridge）
 ├── packages/
 │   ├── core/               # 共享「库原语」（非 ctx 服务，官方 core/scope 的对应）
 │   │   └── scope/          #   ScopeKey / Scope / ScopedLayers / createScope
@@ -143,14 +144,55 @@ def apply(ctx): ...
 - 工具名沿用官方（`bash`/`read_file`/`skill-catalog`/`task`）。
 - 工具白名单：consumer 经 `inject=["config"]` 读 `allowed_tools`，`None`=全开，列表不含则跳过注册。
 
+## 9-b. LLM 适配与思考模式（软映射层）
+
+**seam**：`llm/definition.py` 定义 `LlmRuntime.stream` + `Chunk`（内核/loop 不 import openai
+类型）；`llm/providers/openai.py` 是唯一 import openai 的地方。将来加 anthropic = 新增 provider。
+
+**思考五档与软映射**（[softmap.py](../src/minidsh/packages/services/llm/softmap.py)）：
+- 统一枚举 `reasoningEffort`：`off / minimal / low / medium / high`（默认 `medium`），
+  存 `ModelSpec.reasoning_effort`，非法档位解析期抛 `ValueError`（fail fast）。
+- **软映射层是纯函数、只认 model id 家族（前缀）**，无视 vendor 字段（对齐 claw-code）。
+  四家差异全收敛在四个函数：
+
+  | 函数 | 作用 |
+  |---|---|
+  | `is_reasoning_model(id)` | 推理/思维链模型 → 请求剥离 temperature/top_p/penalties（固定采样，传了会被 400 拒收） |
+  | `requires_reasoning_history(id)` | 必须在多轮/工具调用里回传上一轮 `reasoning_content` 的家族（deepseek-v4 / kimi-k3 / kimi-k2.7） |
+  | `reasoning_effort_map(id, effort)` | 五档 → 各家真实值（就近归并：DS medium→high、K3 high→max 等） |
+  | `thinking_optin(id, effort)` | 需要 `thinking` / `enable_thinking` 开关的家族（DeepSeek/Kimi K2.6/Qwen） |
+
+- **温度语义**：非推理模型透传；推理模型剥离（官方「思考模式不支持 temperature」）。
+- **推理强度档位诚实降级**：DeepSeek/Kimi 无 `medium` 档、K3 无 `off`、GPT o-series 不逐字回传思考——
+  softmap 里如实归并/忽略，不伪造。
+
+**流式思考字段**：统一 `delta.reasoning_content` → `Chunk(kind="reasoning-delta")` → 会话事件
+`reasoning-chunk`（白名单 + 持久化）。GPT o-series 不回传思考流，故无思考可显示（API 限制，非缺实现）。
+
+**回传协议（模型切换安全）**：reasoning 是**持久历史数据**，存进 `self.messages` 的 assistant
+消息 `reasoning_content` 旁路字段；wire 序列化每次按**当前 model** 现算决定 echo/strip。所以
+`/model` 同会话来回切，reasoning 始终能按当前模型要求回传。纯文本无工具轮可不回传。
+
 ## 10. 会话事件契约
 
 - `SessionEventType` 白名单（[event.py](../src/minidsh/packages/services/session/event.py)）：
-  `user-message / assistant-chunk / assistant-message / tool-call / tool-result /
-  skill-loaded / subagent-spawn / subagent-result / compaction / error`。
+  `user-message / assistant-chunk / assistant-message / reasoning-chunk / tool-call /
+  tool-result / model-change / skill-loaded / subagent-spawn / subagent-result /
+  compaction / error`。
 - **新增事件类型 = 在白名单枚举加一个成员**（非破坏性），未知类型构造期即拒绝（杜绝脏数据）。
 - `SessionEvent` frozen（对齐官方 deepFreeze 的不可变语义）；payload 契约「append 后不改」。
 - **刷盘边界 = `assistant-message`**（v1「一条回复」边界），另有 `session/flush` 事件作显式屏障。
+
+## 10-b. TUI 前端（观察者，不碰 core 机制）
+
+- **定位**：`infrastructure/tui/` 是「可观测性」的前端，不是 `packages/services/` 能力。
+- **只读观察者**：只订阅 `session/event` 渲染，不新增事件、不改 loop/tools；一律 `post_message`
+  异步转发，**绝不**在同一事件循环里起第二个 `asyncio.run`。
+- **视图模型与渲染解耦**：`transcript.py`（`fold` 纯函数，事件 → turn 树）不 import Textual、
+  可脱离终端单测；`app.py`/`bridge.py` 才碰 UI。
+- **交互命令**（斜杠）：`/exit`、`/model <id>`（切模型，同会话续聊，跨所有 models.json 模型）、
+  `/thinking <档位>`（切思考强度）；状态栏显示「模型(档位)」。`replay`/`plugin` 仍是独立 CLI 子命令。
+- 无 `run` 子命令：`minidsh [dir]`（dir 缺省 cwd）直接启动 TUI。
 
 ## 11. 命名规约（汇总表）
 
@@ -170,10 +212,12 @@ def apply(ctx): ...
 ## 13. 测试规约
 
 - 栈：pytest + pytest-asyncio（`asyncio_mode=auto`）+ pytest-cov。`pythonpath=["src"]`。
-- **基线：全绿 + 高覆盖**（当前 304 tests / 93%）。改动外部行为必须同绿。
+- **基线：全绿 + 高覆盖**（当前 338 tests / 93%）。改动外部行为必须同绿。
 - **不用 StubLlm**：LLM 测试用 `tests/helpers/` 的 `make_fake_llm`（脚本化回放）+ `openai_fake`（假 client）。内核/loop 从不 import openai 类型。
+  - 脚本化 client 支持 `{"reasoning": "...", "text": "..."}` 轮次 → 产 `reasoning-delta` + `text-delta`。
 - **执行世界装配**：shell-local 依赖 subprocess，测试里用 `tests/helpers/world.py` 的 `plug_execution_world(ctx)` 一次插好 subprocess→shell→fs，再 plugin 工具。
 - **bwrap 测试 skip 门控**：sandbox 用 `pytest.mark.skipif(shutil.which("bwrap") is None)`，无 bwrap 环境跳过（不假装 full）。
+- **TUI 测试**：视图模型（`fold`）纯单测；交互命令用 `App.run_test()`（Pilot）异步断言（斜杠命令 reconfigure / 状态栏刷新）。
 - **隔离 `MINIDSH_HOME`**：`tests/conftest.py` autouse fixture 把用户配置目录指向 tmp（防止读到真实 apiKey）。
 - 注意：**必须用 `python -m pytest` 跑**（裸 `pytest` 缺 `tests` 包路径，collect 会报 `No module named 'tests.helpers'`）。改了 pyproject 的 entry-point 后要 `pip install -e . --no-build-isolation` 才会刷新发现缓存。
 
@@ -192,5 +236,8 @@ def apply(ctx): ...
 - [ ] 有没有引入「manifest」措辞 / 环境变量 / provider 抽象？（都违反铁律）
 - [ ] 新旧两个「tools」是否各归其位（`packages/tools/` vs `tool_runtime/` vs service 根辅助）？
 - [ ] 事件类型是否进了 `SessionEventType` 白名单？
+- [ ] 新模型的思考强度是否走了 `softmap` 软映射（而非在 provider 里散落 if）？温度剥离对 reasoning 模型是否正确？
+- [ ] reasoning 回传是否按「持久历史 + 每次按当前 model 现算 echo/strip」，而非 load 时定死？
+- [ ] TUI 改动是否只读 session/event、没碰 core 机制？
 - [ ] 偏离官方处是否标了 `[教学简化]`？关键做来源标注 `↔`？
 - [ ] 是否用 `python -m pytest` 跑，全绿 + 覆盖不降？
