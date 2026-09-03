@@ -85,7 +85,7 @@ def _patch_loader(monkeypatch, script=None):
 
         asyncio.run(_drive())
         turns = fold(agent.session.events())
-        _sys.stdout.write(_Transcript().render_turns(turns))
+        _sys.stdout.write(_Transcript().render_turns(turns).plain)
         return 0
 
     monkeypatch.setattr(cli_module, "_launch_tui_app", fake_launch)

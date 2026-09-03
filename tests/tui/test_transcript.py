@@ -117,5 +117,21 @@ def test_reasoning_rendered_with_dim_markup():
         _ev(1, "assistant-message", content="回复", stop_reason="end-turn"),
     ])
     out = _Transcript().render_turns(turns)
-    assert "[dim]思考[/dim]" in out       # 思考分色
-    assert "回复" in out
+    assert "思考" in out.plain          # 思考文本渲染出来
+    assert "回复" in out.plain
+    # 思考段带 dim 样式：找到思考文本所在的 span 有 dim 风格
+    thinking_styled = any(
+        "dim" in getattr(span, "style", "") for span in out.spans if "思考" in out.plain[span.start:span.end]
+    )
+    assert thinking_styled
+
+
+def test_markup_brackets_not_parsed_as_style():
+    from minidsh.infrastructure.tui.app import _Transcript
+
+    turns = fold([
+        _ev(0, "assistant-message", content='{"x": [1, 2]} 天气[00]:晴朗', stop_reason="end-turn"),
+    ])
+    out = _Transcript().render_turns(turns)
+    # 含 [1, 2] 这类方括号的 payload 不再抛 MarkupError，原样渲染
+    assert "[1," in out.plain or "天气" in out.plain

@@ -13,6 +13,7 @@ import asyncio
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import Footer, Input, Static, Label
+from rich.text import Text
 
 from .transcript import Turn, Block, fold
 from .bridge import EventMessage
@@ -21,28 +22,33 @@ __all__ = ["TuiApp"]
 
 
 class _Transcript(Static):
-    """转录视图：按 turn 渲染成可折叠的 Markdown 近似文本。"""
+    """转录视图：按 turn 渲染。返回 rich ``Text``（思考段带 dim 样式，正文/工具结果
+    一律当纯文本，杜绝 markup 误解析 payload 里的 ``[...]``）。"""
 
-    def render_turns(self, turns: list[Turn]) -> str:
-        lines: list[str] = []
+    def render_turns(self, turns: list[Turn]) -> Text:
+        text = Text()
         for turn in turns:
             if turn.kind == "user":
-                lines.append(f"### 你\n\n{turn.text}")
+                text.append("### 你\n\n", style="bold")
+                text.append(turn.text)
+                text.append("\n")
             else:
                 if turn.thinking:
-                    # 思考用 dim（Textual markup 灰/暗色），与回复区分
-                    lines.append(f"[dim]{turn.thinking}[/dim]")
-                lines.append(f"### assistant\n\n{turn.text}")
+                    text.append(turn.thinking + "\n", style="dim italic")
+                text.append("### assistant\n\n", style="bold")
+                text.append(turn.text)
+                text.append("\n")
                 for block in turn.blocks:
-                    lines.append(self._render_block(block))
-            lines.append("")
-        return "\n".join(lines) or "（等待输入…）"
+                    self._append_block(text, block)
+            text.append("\n")
+        return text or Text("（等待输入…）")
 
     @staticmethod
-    def _render_block(block: Block) -> str:
+    def _append_block(text: Text, block: Block) -> None:
         state_icon = {"pending": "⏳", "done": "✓", "error": "✗"}.get(block.state, "")
-        header = f"<details><summary>{state_icon} {block.header}</summary>\n\n{block.body}\n</details>"
-        return header
+        text.append(f"{state_icon} {block.header}\n", style="dim")
+        if block.body:
+            text.append(f"    {block.body}\n")
 
 
 class TuiApp(App):
