@@ -26,6 +26,11 @@ name = "minidsh.settings"
 inject = []
 
 
+def apply(ctx):
+    """构造 FileSettingsService（自注册 ctx.settings）。"""
+    FileSettingsService(ctx)
+
+
 class FileSettingsService(SettingsService, CapabilityProvider):
     """文件后端 settings：用户文档持久化在 user_settings_path。"""
 
