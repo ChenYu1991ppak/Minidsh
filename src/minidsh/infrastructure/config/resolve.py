@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .config import Config, ModelSpec
+from .config import Config, ModelSpec, _validate_effort
 from .files import user_models_path, user_settings_path, project_dir, load_json
 
 __all__ = ["resolve_config"]
@@ -68,6 +68,7 @@ def _merge_models(cfg: Config, data: dict, override: bool = False) -> None:
             supports_reasoning=item.get("supportsReasoning", False),
             supports_images=item.get("supportsImages", False),
             temperature=item.get("temperature"),
+            reasoning_effort=_validate_effort(item.get("reasoningEffort")),
         )
         incoming[spec.id] = spec
 

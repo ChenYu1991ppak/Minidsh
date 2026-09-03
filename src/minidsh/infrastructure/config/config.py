@@ -7,8 +7,29 @@ harness 设置（storage/compaction/tools）来自独立的 settings.json。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
-__all__ = ["Config", "ModelSpec"]
+__all__ = [
+    "Config",
+    "ModelSpec",
+    "REASONING_EFFORTS",
+    "ReasoningEffort",
+]
+
+# 思考强度五档（off/minimal/low/medium/high）。各 provider 内部做软映射。
+ReasoningEffort = Literal["off", "minimal", "low", "medium", "high"]
+REASONING_EFFORTS: frozenset[str] = frozenset({"off", "minimal", "low", "medium", "high"})
+
+
+def _validate_effort(value: str | None, default: str = "medium") -> str:
+    """校验思考强度档位（解析期 fail fast，不静默降级）。非法抛 ValueError。"""
+    if value is None:
+        return default
+    if value not in REASONING_EFFORTS:
+        raise ValueError(
+            f"reasoningEffort 非法：{value!r}（合法值 {sorted(REASONING_EFFORTS)}）"
+        )
+    return value
 
 
 @dataclass
@@ -24,6 +45,7 @@ class ModelSpec:
     supports_reasoning: bool = False
     supports_images: bool = False
     temperature: float | None = None
+    reasoning_effort: str = "medium"     # 思考强度五档（软映射，provider 内按家族收敛）
 
 
 @dataclass

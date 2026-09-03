@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 
 from minidsh.infrastructure.config import Config, ModelSpec, resolve_config
+from minidsh.infrastructure.config.config import _validate_effort
 from minidsh.infrastructure.config.files import load_json, save_json, user_models_path, user_settings_path, project_dir
 
 
@@ -135,6 +136,44 @@ def test_missing_files_return_empty(tmp_path, monkeypatch):
     cfg = resolve_config(tmp_path / "nonexistent")
     assert cfg.models == []
     assert cfg.storage == "jsonl"
+
+
+# ---------- 思考强度（M1） ----------
+
+
+def test_reasoning_effort_parsed(tmp_path, monkeypatch):
+    _write_user(models={
+        "models": [{"id": "m", "url": "u", "reasoningEffort": "high"}],
+        "availableModels": ["m"],
+    }, tmp_path=tmp_path, monkeypatch=monkeypatch)
+
+    assert resolve_config().current.reasoning_effort == "high"
+
+
+def test_reasoning_effort_defaults_to_medium(tmp_path, monkeypatch):
+    _write_user(models={
+        "models": [{"id": "m", "url": "u"}],
+        "availableModels": ["m"],
+    }, tmp_path=tmp_path, monkeypatch=monkeypatch)
+
+    assert resolve_config().current.reasoning_effort == "medium"
+
+
+def test_reasoning_effort_invalid_rejected(tmp_path, monkeypatch):
+    with pytest.raises(ValueError):
+        _validate_effort("ultra")
+    # 五档全合法
+    for level in ("off", "minimal", "low", "medium", "high"):
+        assert _validate_effort(level) == level
+
+
+def test_temperature_parsed(tmp_path, monkeypatch):
+    _write_user(models={
+        "models": [{"id": "m", "url": "u", "temperature": 0.7}],
+        "availableModels": ["m"],
+    }, tmp_path=tmp_path, monkeypatch=monkeypatch)
+
+    assert resolve_config().current.temperature == 0.7
 
 
 # ---------- 文件读写 ----------

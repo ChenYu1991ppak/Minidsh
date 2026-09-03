@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from .config import Config, ModelSpec
+from .config import Config, ModelSpec, REASONING_EFFORTS, _validate_effort
 from .resolve import resolve_config
 from .files import (
     user_models_path,
@@ -19,6 +19,8 @@ from .files import (
 __all__ = [
     "Config",
     "ModelSpec",
+    "REASONING_EFFORTS",
+    "_validate_effort",
     "resolve_config",
     "user_models_path",
     "user_settings_path",
