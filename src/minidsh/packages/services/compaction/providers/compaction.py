@@ -7,10 +7,22 @@ from minidsh.packages.services.compaction.definition import (
     PruneStrategy,
     measure_messages,
 )
+from minidsh.packages.services.token_meter import estimate_message
 from minidsh.cordis import CapabilityProvider
 
 name = "minidsh.compaction"
-inject = ["sessions", "llm", "config"]
+inject = ["sessions", "llm", "config", "tokenMeter"]
+
+
+def _measure(agent) -> int:
+    """估算当前 agent 消息列表的 token 总量：优先 tokenMeter，否则 chars/4。"""
+    if hasattr(agent.ctx, "tokenMeter"):
+        m = agent.ctx.tokenMeter.measure(agent.session, messages=agent.messages)
+        return m.total_tokens
+    total = 0
+    for msg in agent.messages:
+        total += estimate_message(msg)
+    return total
 
 
 class BasicCompactionEngine(CompactionEngine, CapabilityProvider):
@@ -28,12 +40,12 @@ class BasicCompactionEngine(CompactionEngine, CapabilityProvider):
         return int(self.context_window * self.threshold_ratio)
 
     async def maybe_compact(self, agent) -> dict | None:
-        total = measure_messages(agent.messages)
+        total = _measure(agent)
         if total < self.threshold:
             return None
         before = total
         agent.messages = await self.strategy.compact(agent.messages, self.ctx.llm)
-        after = measure_messages(agent.messages)
+        after = _measure(agent)
         agent.session.append(
             "compaction",
             {"reason": "pressure", "from_tokens": before, "to_tokens": after},
@@ -41,9 +53,9 @@ class BasicCompactionEngine(CompactionEngine, CapabilityProvider):
         return {"from_tokens": before, "to_tokens": after}
 
     async def compact_now(self, agent) -> dict | None:
-        before = measure_messages(agent.messages)
+        before = _measure(agent)
         agent.messages = await self.strategy.compact(agent.messages, self.ctx.llm)
-        after = measure_messages(agent.messages)
+        after = _measure(agent)
         agent.session.append(
             "compaction",
             {"reason": "manual", "from_tokens": before, "to_tokens": after},

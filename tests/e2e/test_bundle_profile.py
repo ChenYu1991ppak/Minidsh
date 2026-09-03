@@ -14,7 +14,7 @@ def test_load_builtin_base_bundle():
     bundle = load_bundle(BUILTIN_BUNDLE_NAME)
     assert bundle is not None
     assert bundle.name == "minidsh.base"
-    assert len(bundle.plugins) == 22  # 内置 base 有 22 个插件
+    assert len(bundle.plugins) == 23  # 内置 base 有 23 个插件
     names = [r.name for r in bundle.plugins]
     assert names[0] == "minidsh.config"
     assert "minidsh.persistence-jsonl" in names
@@ -37,7 +37,7 @@ def test_bundle_is_frozen_entity():
 
 def test_default_profile_is_base():
     merged = resolve_profile(None)
-    assert len(merged) == 22
+    assert len(merged) == 23
     assert merged[0].name == "minidsh.config"
 
 
@@ -54,7 +54,7 @@ def test_custom_profile_with_base_only(tmp_path, monkeypatch):
         "bundles:\n  - minidsh.base\n", encoding="utf-8"
     )
     merged = resolve_profile(profile="demo")
-    assert len(merged) == 22
+    assert len(merged) == 23
 
 
 def test_custom_profile_unknown_bundle_warns_and_continues(tmp_path, monkeypatch, capsys):
@@ -64,14 +64,14 @@ def test_custom_profile_unknown_bundle_warns_and_continues(tmp_path, monkeypatch
         "bundles:\n  - minidsh.base\n  - ghost-bundle\n", encoding="utf-8"
     )
     merged = resolve_profile(profile="demo")
-    assert len(merged) == 22
+    assert len(merged) == 23
     assert "ghost-bundle" in capsys.readouterr().err
 
 
 def test_missing_profile_returns_default(tmp_path, monkeypatch):
     monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
     merged = resolve_profile(profile="nonexistent")
-    assert len(merged) == 22
+    assert len(merged) == 23
 
 
 def test_profile_plugins_accumulate(tmp_path, monkeypatch):
@@ -82,7 +82,7 @@ def test_profile_plugins_accumulate(tmp_path, monkeypatch):
     )
     merged = resolve_profile(None)
     names = [r.name for r in merged]
-    assert len(merged) == 23  # 22 + my-extra
+    assert len(merged) == 24  # 23 + my-extra
     assert names[-1] == "my-extra"
 
 
@@ -96,7 +96,7 @@ def test_loader_uses_profile_not_bundles_import():
     assert "_bundles" not in src
     assert "resolve_profile" in src
     entries = loader._profile_plugins(None, None, None, quiet=False)
-    assert len(entries) == 22
+    assert len(entries) == 23
 
 
 def test_loader_quiet_removes_trace_render():
@@ -105,4 +105,4 @@ def test_loader_quiet_removes_trace_render():
     entries = loader._profile_plugins(None, None, None, quiet=True)
     names = [r.name for r in entries]
     assert "minidsh.trace-render" not in names
-    assert len(entries) == 21
+    assert len(entries) == 22

@@ -20,6 +20,7 @@ plugins:
   - minidsh.settings
   - minidsh.agents-md
   - minidsh.loop
+  - minidsh.token-meter
   - minidsh.compaction
   - minidsh.trace-render
   - minidsh.persistence-jsonl
