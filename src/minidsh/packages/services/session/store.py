@@ -19,6 +19,14 @@ from .event import SessionEvent, SessionEventType
 __all__ = ["Session", "SessionStore", "SessionHeader"]
 
 
+def _parse_session_number(session_id: str) -> int:
+    """从 ``session-NNNN`` 提取序号 NNNN；解析不出返回 0。"""
+    try:
+        return int(session_id.rsplit("-", 1)[-1])
+    except (ValueError, IndexError, AttributeError):
+        return 0
+
+
 @dataclass(frozen=True)
 class SessionHeader:
     """会话不可变身份元数据（对齐官方 SessionHeader）。
@@ -90,9 +98,13 @@ class SessionStore:
         self._next_id = 0
 
     def create(self, meta: dict | None = None) -> Session:
-        """创建一个新会话并登记。session_id = "session-0001" 式自增。"""
+        """创建一个新会话并登记。session_id = "session-0001" 式自增，跳过已占用的编号。"""
         self._next_id += 1
-        session = Session(self.ctx, f"session-{self._next_id:04d}", meta=meta)
+        session_id = f"session-{self._next_id:04d}"
+        while session_id in self._sessions:
+            self._next_id += 1
+            session_id = f"session-{self._next_id:04d}"
+        session = Session(self.ctx, session_id, meta=meta)
         self._sessions[session.id] = session
         return session
 
@@ -101,8 +113,12 @@ class SessionStore:
         """恢复一个持久会话：用给定 session_id 建 Session 并装回已落盘事件。
 
         ``events`` 为 None 时仅建空会话（由调用方后续 adopt）。恢复的 session_id
-        沿用持久编号（下次 create 仍可与其撞名，但 resume 场景编号由持久层保证连续）。
+        沿用持久编号；**同时把 ``_next_id`` 提升到该编号**，避免后续 ``create``
+        再生成相同编号（resume 后 ``/new`` 撞名 → seq 断裂的根因）。
         """
+        n = _parse_session_number(session_id)
+        if n > self._next_id:
+            self._next_id = n
         session = Session(self.ctx, session_id, meta=meta)
         if events:
             session.adopt(events)

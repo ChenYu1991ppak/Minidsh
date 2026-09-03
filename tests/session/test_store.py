@@ -99,3 +99,31 @@ def test_store_create_and_get():
 def test_store_get_unknown_returns_none():
     _, store = _ctx_with_store()
     assert store.get("nope") is None
+
+
+# ---------- resume 撞名回归（/new 后 seq 断裂的根因） ----------
+
+
+def test_resume_bumps_next_id_so_create_does_not_collide():
+    """恢复 session-0001 后再 create，必须生成 session-0002 而非撞名重开 session-0001。"""
+    ctx, store = _ctx_with_store()
+    resumed = store.resume("session-0001", events=[])
+    assert resumed.id == "session-0001"
+
+    new = store.create()
+    assert new.id == "session-0002"          # 不能又生成 session-0001
+    assert store.get("session-0001") is resumed
+
+
+def test_resume_bumps_next_id_to_large_number():
+    ctx, store = _ctx_with_store()
+    store.resume("session-0007", events=[])
+    assert store.create().id == "session-0008"
+
+
+def test_create_skips_occupied_number():
+    ctx, store = _ctx_with_store()
+    store.resume("session-0001", events=[])
+    # resume 已把 _next_id 提到 1，create 得 2；手动占 2 后再 create 得 3
+    store._sessions["session-0002"] = Session(ctx, "session-0002")
+    assert store.create().id == "session-0003"
