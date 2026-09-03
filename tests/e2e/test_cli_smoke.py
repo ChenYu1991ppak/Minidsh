@@ -1,6 +1,6 @@
 """T18 验收测试：CLI 装配 + examples/demo + e2e 冒烟。
 
-用 ``minidsh.packages.workspace.cli.main`` 直接调用（等价 ``minidsh run`` 入口），
+用 ``minidsh ... [dir]`` 直接调用（交互面是 TUI，测试经 monkeypatch 隔离 TUI 启动），
 配合 monkeypatched stdin/stdout 断言端到端行为。对应 spec S1 / S2 / S3。
 
 LLM 走 openai mock：monkeypatch ``cli.load_project`` 注入假 client（跳过真实 key 与网络）。
@@ -35,7 +35,9 @@ def _run_cli(argv, stdin_text=""):
 
 
 def _patch_loader(monkeypatch, script=None):
-    """把 cli.load_project 换成注入假 llm provider 插件的版本。"""
+    """把 cli.load_project 换成注入假 llm provider 插件的版本；并用 headless TUI
+    测试驱动替代真终端 run（agent 经会话事件折回转录）。"""
+    from minidsh.infrastructure.boot import cli as cli_module
 
     def fake_load(project_dir, *, storage=None, **kw):
         from minidsh.infrastructure.boot.loader import load_project
@@ -57,6 +59,36 @@ def _patch_loader(monkeypatch, script=None):
             monkeypatch.setattr(llm_pg, "apply", orig_apply)
 
     monkeypatch.setattr(cli_module, "load_project", fake_load)
+    # TUI 启动换成 headless 驱动：读 stdin 逐行驱动（等价旧 _run_repl），退出 flush，
+    # 输出会话转录（Transcript render，不启动真终端）。
+    from minidsh.infrastructure.boot.cli import _launch_tui_app
+
+    def fake_launch(ctx, agent):
+        from minidsh.infrastructure.tui.transcript import fold
+        from minidsh.infrastructure.tui.app import _Transcript
+
+        import asyncio
+        import sys as _sys
+
+        async def _drive():
+            for line in _sys.stdin:
+                text = line.rstrip("\n")
+                if text.strip().lower() in ("exit", "quit") or text.strip() == "":
+                    continue
+                agent.send(text)
+                await agent.run()
+            # 落盘屏障（等价旧 _run_repl）
+            ctx.emit("session/flush", agent.session.id)
+            backend = getattr(ctx, "_persistence_backend", None)
+            if backend is not None and hasattr(backend, "close"):
+                backend.close()
+
+        asyncio.run(_drive())
+        turns = fold(agent.session.events())
+        _sys.stdout.write(_Transcript().render_turns(turns))
+        return 0
+
+    monkeypatch.setattr(cli_module, "_launch_tui_app", fake_launch)
 
 
 DEMO = Path(__file__).resolve().parents[2] / "examples" / "demo"
@@ -67,11 +99,12 @@ def test_run_completes_closed_loop(tmp_path, monkeypatch):
     shutil.copytree(DEMO, demo)
     _patch_loader(monkeypatch)
 
-    code, out, err = _run_cli(["run", str(demo)], stdin_text="问候\n")
+    code, out, err = _run_cli([str(demo)], stdin_text="问候\n")
 
     assert code == 0, err
-    assert "user-message" in out
-    assert "assistant-message" in out
+    # 转录渲染出 user turn（"### 你"）与 assistant turn（"### assistant"）
+    assert "### 你" in out
+    assert "### assistant" in out
 
 
 def test_run_persists_session_jsonl(tmp_path, monkeypatch):
@@ -79,7 +112,7 @@ def test_run_persists_session_jsonl(tmp_path, monkeypatch):
     shutil.copytree(DEMO, demo)
     _patch_loader(monkeypatch)
 
-    code, _, _ = _run_cli(["run", str(demo)], stdin_text="你好\n")
+    code, _, _ = _run_cli([str(demo)], stdin_text="你好\n")
     assert code == 0
 
     sessions_dir = demo / ".dsh" / "sessions"
@@ -97,7 +130,7 @@ def test_run_persists_session_sqlite(tmp_path, monkeypatch):
     shutil.copytree(DEMO, demo)
     _patch_loader(monkeypatch)
 
-    code, _, _ = _run_cli(["run", "--storage", "sqlite", str(demo)], stdin_text="你好\n")
+    code, _, _ = _run_cli([str(demo), "--storage", "sqlite"], stdin_text="你好\n")
     assert code == 0
     assert (demo / ".dsh" / "sessions.db").exists()
 
@@ -107,7 +140,7 @@ def test_replay_cli_reads_session(tmp_path, monkeypatch):
     shutil.copytree(DEMO, demo)
     _patch_loader(monkeypatch)
 
-    _run_cli(["run", str(demo)], stdin_text="你好\n")
+    _run_cli([str(demo)], stdin_text="你好\n")
 
     sessions_dir = demo / ".dsh" / "sessions"
     jsonl_file = list(sessions_dir.glob("*.jsonl"))[0]

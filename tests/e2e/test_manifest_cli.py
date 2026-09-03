@@ -1,4 +1,4 @@
-"""CLI --profile argv 覆盖层测试：run 子命令接受 --profile（名字=选，路径=覆盖）。"""
+"""CLI --profile / --storage 覆盖层测试：TUI 入口接受 `--profile`（名字=选，路径=覆盖）。"""
 from __future__ import annotations
 
 import io
@@ -27,6 +27,18 @@ def _fake_ctx():
     ctx.provide("agent_loop", _FakeLoop(ctx))
     ctx._persistence_backend = None
     return ctx
+
+
+def _stub_tui_launch(monkeypatch, capture=None):
+    """把 TUI 启动入口替换为 no-op（测试不启动真终端），可捕获 (ctx, agent)。"""
+    from minidsh.infrastructure.boot import cli as cli_module
+
+    def fake_launch(ctx, agent):
+        if capture is not None:
+            capture.append((ctx, agent))
+        return 0
+
+    monkeypatch.setattr(cli_module, "_launch_tui_app", fake_launch)
 
 
 class _FakeSession:
@@ -63,17 +75,18 @@ def test_run_profile_path_vs_name(tmp_path, monkeypatch):
         return _fake_ctx()
 
     monkeypatch.setattr(cli_module, "load_project", spy_load)
+    _stub_tui_launch(monkeypatch)
 
     # 文件存在 → argv_path
     mine = tmp_path / "mine.yaml"
     mine.write_text("plugins:\n  - x\n", encoding="utf-8")
-    _run_cli(["run", "--profile", str(mine), "./demo"], stdin_text="")
+    _run_cli(["--profile", str(mine), "./demo"], stdin_text="")
     assert captured["argv_path"] == str(mine)
     assert captured["profile"] is None
 
     # 名字（不存在）→ profile 名
     captured.clear()
-    _run_cli(["run", "--profile", "demo", "./demo"], stdin_text="")
+    _run_cli(["--profile", "demo", "./demo"], stdin_text="")
     assert captured["profile"] == "demo"
     assert captured["argv_path"] is None
 
@@ -82,23 +95,26 @@ def test_reject_invalid_storage_choice():
     import pytest
 
     with pytest.raises(SystemExit):
-        _run_cli(["run", "--storage", "nope", "./demo"], stdin_text="")
+        _run_cli(["--storage", "nope", "./demo"], stdin_text="")
 
 
-def test_run_repl_loop_break_and_flush(tmp_path, monkeypatch):
+def test_tui_bare_and_dir_dispatch(tmp_path, monkeypatch):
     real_ctx = _fake_ctx()
-    captured = {}
+    captured = {"dirs": []}
 
     def spy_load(project_dir, *, storage=None, profile=None, argv_path=None, **kw):
+        captured["dirs"].append(project_dir)
         captured["loaded"] = True
         return real_ctx
 
     monkeypatch.setattr(cli_module, "load_project", spy_load)
+    _stub_tui_launch(monkeypatch, capture=captured.setdefault("launches", []))
 
-    code, _, _ = _run_cli(["run", "./demo"], stdin_text="你好\n\nquit\n")
+    code, _, _ = _run_cli(["./demo"], stdin_text="你好\n\nquit\n")
     assert code == 0
     assert captured["loaded"]
-    assert real_ctx.probe("agent_loop").agent.sent == ["你好"]
+    assert captured["launches"]  # TUI 启动入口被调用（agent 已 create）
+    assert captured["dirs"][-1] == "./demo"
 
 
 def test_replay_no_events(tmp_path, monkeypatch):

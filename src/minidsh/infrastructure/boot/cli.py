@@ -1,18 +1,21 @@
-"""CLI 装配：``minidsh run`` / ``minidsh replay``。
+"""CLI 装配：``minidsh``（TUI）· ``minidsh replay`` · ``minidsh plugin``。
 
 对应源码：packages/boot 的命令装配 + ch03 的 replay 语义。
 
-- ``minidsh run [--storage jsonl|sqlite] <dir>``
-  加载项目（配置来自 models.json + settings.json），进入 loop 持续执行。
+- ``minidsh [dir] [--storage jsonl|sqlite] [--profile ...]``
+  ``dir`` 缺省 = 当前工作目录；**无子命令直接启动交互式 TUI**（参考 Claude Code TUI）。
 - ``minidsh replay <path> [--session-id ID]``
   从 jsonl/sqlite 重放会话时间线。
+- ``minidsh plugin ...``
+  安装/卸载/列举插件。
 
+无 ``run`` 子命令——``replay``/``plugin`` 是仅有的两个子命令，其余一律走 TUI。
 配置管理不设子命令：模型与 harness 设置分别手写 ``models.json`` / ``settings.json``。
 """
 from __future__ import annotations
 
 import argparse
-import asyncio
+import os
 import sys
 
 from .loader import load_project
@@ -20,17 +23,16 @@ from ...packages.services.session.reporting import replay_session, load_session_
 
 __all__ = ["main"]
 
+# 仅有的两个子命令；其余 argv 一律按 TUI 的位置参数 dir 处理。
+_SUBCOMMANDS = ("replay", "plugin")
+
 
 def build_parser() -> argparse.ArgumentParser:
+    """replay / plugin 子命令解析器。"""
     parser = argparse.ArgumentParser(
         prog="minidsh", description="最小化 DeepSeek Harness（dsh）"
     )
     sub = parser.add_subparsers(dest="command", required=True)
-
-    run = sub.add_parser("run", help="加载项目目录并进入 loop")
-    run.add_argument("dir", help="项目目录路径")
-    run.add_argument("--storage", choices=["jsonl", "sqlite"], default=None, help="持久化后端")
-    run.add_argument("--profile", default=None, help="profile 名或文件路径（名字=选，路径=覆盖）")
 
     replay = sub.add_parser("replay", help="重放一个会话的时间线")
     replay.add_argument("path", help="jsonl 文件 / 含 sessions 或 sessions.db 的目录")
@@ -47,39 +49,24 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# ---------- run ----------
+def _build_tui_parser() -> argparse.ArgumentParser:
+    """TUI 专用解析：``minidsh [dir] [--storage ...] [--profile ...]``。"""
+    parser = argparse.ArgumentParser(
+        prog="minidsh", description="最小化 DeepSeek Harness（dsh）"
+    )
+    parser.add_argument("dir", nargs="?", default=None, help="项目目录路径（缺省=当前目录）")
+    parser.add_argument("--storage", choices=["jsonl", "sqlite"], default=None, help="持久化后端")
+    parser.add_argument("--profile", default=None, help="profile 名或文件路径（名字=选，路径=覆盖）")
+    return parser
 
 
-async def _run_repl(ctx) -> None:
-    """读 stdin 逐行作为用户消息驱动 loop。
-
-    读到 ``exit`` / ``quit`` 或 EOF（Ctrl-D）即结束。退出即 flush，会话落盘完整。
-    """
-    loop = ctx.probe("agent_loop")
-    agent = loop.create()
-
-    prompt = "> " if sys.stdin.isatty() else ""
-    try:
-        for line in sys.stdin:
-            text = line.rstrip("\n")
-            if text.strip().lower() in ("exit", "quit"):
-                break
-            if text.strip() == "":
-                continue
-            if prompt:
-                print(prompt, end="", file=sys.stderr)
-            agent.send(text)
-            await agent.run()
-    finally:
-        # 落盘屏障：确保缓冲全部写盘（尤其无 trailing assistant-message 的会话）
-        ctx.emit("session/flush", agent.session.id)
-        backend = getattr(ctx, "_persistence_backend", None)
-        if backend is not None and hasattr(backend, "close"):
-            backend.close()
+# ---------- TUI ----------
 
 
-def _cmd_run(args) -> int:
+def _cmd_tui(args) -> int:
     from pathlib import Path as _Path
+
+    project_dir = args.dir or os.getcwd()
 
     # --profile 合一：文件存在 → 当 argv 覆盖路径；否则 → 当命名 profile 名
     profile_arg = args.profile
@@ -87,12 +74,21 @@ def _cmd_run(args) -> int:
     profile_name = None if argv_path else profile_arg
 
     ctx = load_project(
-        args.dir,
+        project_dir,
         storage=args.storage,
         profile=profile_name,
         argv_path=argv_path,
     )
-    asyncio.run(_run_repl(ctx))
+    loop = ctx.probe("agent_loop")
+    agent = loop.create()
+    return _launch_tui_app(ctx, agent)
+
+
+def _launch_tui_app(ctx, agent) -> int:
+    """装配 TuiApp 并进入交互循环（测试可 monkeypatch 此孤立的启动入口）。"""
+    from ...infrastructure.tui.app import TuiApp
+
+    TuiApp(ctx, agent).run()
     return 0
 
 
@@ -124,13 +120,13 @@ def _cmd_plugin(args) -> int:
 
 
 def main(argv=None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    if args.command == "run":
-        return _cmd_run(args)
-    if args.command == "replay":
-        return _cmd_replay(args)
-    if args.command == "plugin":
-        return _cmd_plugin(args)
-    parser.error(f"未知命令：{args.command}")
-    return 2
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] in _SUBCOMMANDS:
+        args = build_parser().parse_args(argv)
+        if args.command == "replay":
+            return _cmd_replay(args)
+        if args.command == "plugin":
+            return _cmd_plugin(args)
+        return 2
+    # 缺省：一律走 TUI（dir 是可选的第一个位置参数；无 `run` 子命令，历史命令不保留）
+    return _cmd_tui(_build_tui_parser().parse_args(argv))
