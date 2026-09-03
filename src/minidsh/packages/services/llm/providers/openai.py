@@ -6,6 +6,10 @@
 ``ctx.provide("llm", OpenAILlm(...))``。配置经 ``inject=["config"]`` 读 ``ctx.config``，
 不读环境变量——本模块是唯一 import openai 的地方，把 SDK 的 ``ChatCompletionChunk``
 流映射成本仓库统一的 ``Chunk``，内核与 loop 不接触 SDK 类型。
+
+思考/强度：经 ``..softmap`` 软映射层（按 model id 家族）决定 reasoning_effort /
+thinking / enable_thinking / temperature 剥离；reasoning_content 流式产
+``reasoning-delta`` chunk。
 """
 from __future__ import annotations
 
@@ -13,6 +17,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from ..definition import Chunk, LlmRuntime
+from .. import softmap
 from minidsh.cordis import CapabilityProvider
 
 __all__ = ["OpenAILlm"]
@@ -31,12 +36,18 @@ class OpenAILlm(LlmRuntime, CapabilityProvider):
         model: str = "deepseek-chat",
         api_key: str | None = None,
         base_url: str | None = None,
+        temperature: float | None = None,
+        reasoning_effort: str = "medium",
         client: Any | None = None,
     ):
         super().__init__(ctx)
-        if client is not None:
-            self._client = client
-        else:
+        self.model = model
+        self.api_key = api_key
+        self.base_url = base_url
+        self.temperature = temperature
+        self.reasoning_effort = reasoning_effort
+        self._client = client
+        if client is None:
             from openai import AsyncOpenAI
 
             if not api_key:
@@ -44,7 +55,41 @@ class OpenAILlm(LlmRuntime, CapabilityProvider):
                     "缺少 API key：请在 models.json 里为该模型填写 apiKey 字段"
                 )
             self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
-        self.model = model
+
+    def reconfigure(self, spec) -> None:
+        """运行时更新模型/温度/思考强度/url/key（TUI 切模型或强度用）。"""
+        self.model = spec.id
+        self.api_key = spec.api_key or self.api_key
+        self.base_url = spec.url or self.base_url
+        self.temperature = spec.temperature
+        self.reasoning_effort = spec.reasoning_effort
+        # 换 base 端点/apiKey 时重建底层 client
+        if spec.url or spec.api_key:
+            from openai import AsyncOpenAI
+
+            self._client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+
+    def _request_kwargs(self, tools) -> dict[str, Any]:
+        """按当前 model 组装请求 kwargs（含软映射层的思考/温度参数）。"""
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "stream": True,
+        }
+        # temperature：reasoning 模型剥离，否则透传
+        if self.temperature is not None and not softmap.strip_tuning(self.model):
+            kwargs["temperature"] = self.temperature
+        # reasoning_effort：软映射
+        effort = softmap.reasoning_effort_map(self.model, self.reasoning_effort)
+        if effort is not None:
+            kwargs["reasoning_effort"] = effort
+        # thinking / enable_thinking：软映射（DeepSeek/Kimi/Qwen 开关）
+        optin = softmap.thinking_optin(self.model, self.reasoning_effort)
+        if optin is not None:
+            # OpenAI SDK 需要 extra_body 传非标准字段
+            kwargs["extra_body"] = optin
+        if tools:
+            kwargs["tools"] = tools
+        return kwargs
 
     async def stream(
         self,
@@ -57,13 +102,8 @@ class OpenAILlm(LlmRuntime, CapabilityProvider):
             payload.append({"role": "system", "content": system_prompt})
         payload.extend(messages)
 
-        kwargs: dict[str, Any] = {
-            "model": self.model,
-            "messages": payload,
-            "stream": True,
-        }
-        if tools:
-            kwargs["tools"] = tools
+        kwargs = self._request_kwargs(tools)
+        kwargs["messages"] = payload
 
         stream = await self._client.chat.completions.create(**kwargs)
 
@@ -76,6 +116,9 @@ class OpenAILlm(LlmRuntime, CapabilityProvider):
             delta = chunk.choices[0].delta
             if delta is None:
                 continue
+            reasoning = getattr(delta, "reasoning_content", None)
+            if reasoning:
+                yield Chunk(kind="reasoning-delta", reasoning=reasoning)
             if delta.content:
                 yield Chunk(kind="text-delta", text=delta.content)
             if delta.tool_calls:
@@ -122,4 +165,11 @@ def apply(ctx):
             f"模型 {model.id!r} 未配置 url（OpenAI 兼容 base_url）：该模型不可用。"
             "请在 models.json 里为该模型填写 url 字段。"
         )
-    OpenAILlm(ctx, model=model.id, api_key=model.api_key or None, base_url=model.url)
+    OpenAILlm(
+        ctx,
+        model=model.id,
+        api_key=model.api_key or None,
+        base_url=model.url,
+        temperature=model.temperature,
+        reasoning_effort=model.reasoning_effort,
+    )

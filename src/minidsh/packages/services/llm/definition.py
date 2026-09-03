@@ -27,13 +27,15 @@ class Chunk:
     """流式块（StreamChunk 协议，types.ts:291）。
 
     kind:
-    - "text-delta" 文本增量（text 字段）
-    - "tool-call"  模型请求一次工具调用（携带 id/name/arguments）
-    - "finish"     结束（携带 stop_reason）
+    - "reasoning-delta" 思考文本增量（reasoning 字段）
+    - "text-delta"      回复文本增量（text 字段）
+    - "tool-call"       模型请求一次工具调用（携带 id/name/arguments）
+    - "finish"          结束（携带 stop_reason）
     """
 
-    kind: Literal["text-delta", "tool-call", "finish"]
+    kind: Literal["reasoning-delta", "text-delta", "tool-call", "finish"]
     text: str = ""
+    reasoning: str = ""              # reasoning-delta 用：思考增量
     id: str | None = None            # tool-call 用：工具调用 id
     name: str | None = None          # tool-call 用：工具名
     arguments: str | None = None     # tool-call 用：JSON 字符串参数
@@ -61,6 +63,10 @@ class LlmRuntime(CapabilityDefinition):
         tools：工具 schema 列表（OpenAI 兼容格式），None 表示该轮不提供工具。
         产出 Chunk 序列；实现方负责在结束时产出 kind="finish"。
         """
+
+    def reconfigure(self, spec) -> None:
+        """运行时更新模型/温度/思考强度（TUI 切模型/强度用）；缺省 no-op。"""
+        raise NotImplementedError
 
 
 def estimate_tokens(text: str) -> int:

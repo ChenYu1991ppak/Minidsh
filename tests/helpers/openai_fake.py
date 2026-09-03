@@ -17,6 +17,7 @@ __all__ = [
     "text_chunks",
     "tool_chunks",
     "TextChunk",
+    "ReasoningChunk",
     "ToolChunk",
     "chunks_text",
 ]
@@ -40,11 +41,12 @@ class _ToolCall:
 
 
 class _Delta:
-    __slots__ = ("content", "tool_calls")
+    __slots__ = ("content", "tool_calls", "reasoning_content")
 
-    def __init__(self, content=None, tool_calls=None):
+    def __init__(self, content=None, tool_calls=None, reasoning_content=None):
         self.content = content
         self.tool_calls = tool_calls
+        self.reasoning_content = reasoning_content
 
 
 class _Choice:
@@ -121,6 +123,11 @@ def TextChunk(content: str) -> _Chunk:
     return _Chunk(_Delta(content=content))
 
 
+def ReasoningChunk(reasoning: str) -> _Chunk:
+    """一个思考文本增量 chunk（reasoning_content）。"""
+    return _Chunk(_Delta(reasoning_content=reasoning))
+
+
 def ToolChunk(index: int, id=None, name="", arguments=""):
     """一个工具调用增量 chunk（name/arguments 可跨 chunk 分片）。"""
     return _Chunk(_Delta(tool_calls=[_ToolCall(index, id=id, fn=_Fn(name=name, arguments=arguments))]))
@@ -142,8 +149,9 @@ def tool_chunks(pieces: list[tuple[int, str | None, str, str]], capture=None):
 def make_scripted_client(script: list[dict], capture=None):
     """按「轮次」回放剧本的假 client。
 
-    script[i] 只能是两类之一：
+    script[i] 可以是：
     - ``{"text": "..."}`` → 该轮产文本增量 + finish(end-turn)
+    - ``{"reasoning": "...", "text": "..."}`` → 先思考增量，再回复文本增量 + finish(end-turn)
     - ``{"tool_calls": [(name, arguments, id), ...]}`` → 该轮产工具调用 + finish(tool-use)
 
     每轮消耗一行剧本；用尽后所有轮次回放最后一行，否则回放 ``{"text": ""}``。
@@ -160,7 +168,11 @@ def make_scripted_client(script: list[dict], capture=None):
             for j, (name, arguments, tid) in enumerate(row["tool_calls"]):
                 pieces.append(ToolChunk(j, id=tid or f"call-{j}", name=name, arguments=arguments))
             return pieces
-        return [TextChunk(row.get("text", ""))]
+        pieces = []
+        if row.get("reasoning"):
+            pieces.append(ReasoningChunk(row["reasoning"]))
+        pieces.append(TextChunk(row.get("text", "")))
+        return pieces
 
     return _ScriptedClient(chunks_for)
 
