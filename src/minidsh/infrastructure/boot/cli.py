@@ -102,12 +102,24 @@ def _latest_session(ctx) -> str | None:
     return latest()
 
 def _resume_agent(ctx, loop, session_id: str):
-    """从持久化后端加载 session_id 的事件，恢复 agent；失败返回 None。"""
-    backend = getattr(ctx, "_persistence_backend", None)
-    if backend is None:
-        print(f"[minidsh] 无持久化后端，无法恢复会话 {session_id!r}", file=sys.stderr)
-        return None
-    events = backend.load_stored(session_id)
+    """从持久化后端加载 session_id 的事件，恢复 agent；失败返回 None。
+
+    经 ``ctx.sessionPersistence``（协调器）load，而非直接读 backend——协调器的
+    ``load()`` 会把写游标采纳到已落盘的 seq 数，否则恢复后新事件 append 会因
+    seq 从 0 期望而对不上（seq 断裂）。
+    """
+    try:
+        persistence = ctx.probe("sessionPersistence")
+    except Exception:
+        persistence = None
+    if persistence is None:
+        backend = getattr(ctx, "_persistence_backend", None)
+        if backend is None:
+            print(f"[minidsh] 无持久化后端，无法恢复会话 {session_id!r}", file=sys.stderr)
+            return None
+        events = backend.load_stored(session_id)
+    else:
+        events = persistence.load(session_id)
     if not events:
         print(f"[minidsh] 会话 {session_id!r} 不存在或无事件", file=sys.stderr)
         return None
