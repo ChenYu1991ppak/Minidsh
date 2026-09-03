@@ -57,6 +57,7 @@ def _build_tui_parser() -> argparse.ArgumentParser:
     parser.add_argument("dir", nargs="?", default=None, help="项目目录路径（缺省=当前目录）")
     parser.add_argument("--storage", choices=["jsonl", "sqlite"], default=None, help="持久化后端")
     parser.add_argument("--profile", default=None, help="profile 名或文件路径（名字=选，路径=覆盖）")
+    parser.add_argument("--session", default=None, help="恢复指定 session_id（从持久化后端加载事件续聊）")
     return parser
 
 
@@ -80,8 +81,27 @@ def _cmd_tui(args) -> int:
         argv_path=argv_path,
     )
     loop = ctx.probe("agent_loop")
-    agent = loop.create()
+    session_id = getattr(args, "session", None)
+    if session_id:
+        agent = _resume_agent(ctx, loop, session_id)
+        if agent is None:
+            return 1
+    else:
+        agent = loop.create()
     return _launch_tui_app(ctx, agent)
+
+
+def _resume_agent(ctx, loop, session_id: str):
+    """从持久化后端加载 session_id 的事件，恢复 agent；失败返回 None。"""
+    backend = getattr(ctx, "_persistence_backend", None)
+    if backend is None:
+        print(f"[minidsh] 无持久化后端，无法恢复会话 {session_id!r}", file=sys.stderr)
+        return None
+    events = backend.load_stored(session_id)
+    if not events:
+        print(f"[minidsh] 会话 {session_id!r} 不存在或无事件", file=sys.stderr)
+        return None
+    return loop.resume(session_id, events=events)
 
 
 def _launch_tui_app(ctx, agent) -> int:

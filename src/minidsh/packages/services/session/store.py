@@ -65,6 +65,11 @@ class Session:
         """返回事件快照（真实版返回只读视图）。"""
         return list(self.log)
 
+    def adopt(self, events: list[SessionEvent]) -> None:
+        """恢复场景：把已落盘的事件原样装进日志（不重新广播——这些事件已发生过，
+        广播会触发持久化/投影重复消费）。seq 已是每条事件自带的持久序号。"""
+        self.log = list(events)
+
     def __len__(self) -> int:
         return len(self.log)
 
@@ -89,6 +94,19 @@ class SessionStore:
         self._next_id += 1
         session = Session(self.ctx, f"session-{self._next_id:04d}", meta=meta)
         self._sessions[session.id] = session
+        return session
+
+    def resume(self, session_id: str, events: list[SessionEvent] | None = None,
+               meta: dict | None = None) -> Session:
+        """恢复一个持久会话：用给定 session_id 建 Session 并装回已落盘事件。
+
+        ``events`` 为 None 时仅建空会话（由调用方后续 adopt）。恢复的 session_id
+        沿用持久编号（下次 create 仍可与其撞名，但 resume 场景编号由持久层保证连续）。
+        """
+        session = Session(self.ctx, session_id, meta=meta)
+        if events:
+            session.adopt(events)
+        self._sessions[session_id] = session
         return session
 
     def get(self, session_id: str) -> Session | None:

@@ -22,7 +22,7 @@ from ..tool_runtime import ToolExecution
 from .inbox import Inbox
 from ..llm import Chunk, softmap
 
-__all__ = ["AgentLoop", "ReactLoopAgent"]
+__all__ = ["AgentLoop", "ReactLoopAgent", "derive_messages"]
 
 # 安全上限：单 turn 内最多 react 步数，防止模型无休止调工具（教学版常量）。
 _MAX_REACT_STEPS = 20
@@ -36,6 +36,57 @@ def _parse_arguments(raw: str | None) -> dict:
         return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
         return {"_raw": raw}
+
+
+def derive_messages(events) -> list[dict]:
+    """从会话事件流反投影出模型侧消息历史（官方 deriveMessages 的教学简化版）。
+
+    用于 ``resume``：把落盘的事件流还原成 wire 消息，使恢复后的 agent 接着聊。
+    - ``user-message`` → role=user
+    - ``assistant-message`` → role=assistant（content）
+    - ``tool-call`` / ``tool-result`` → 一批 assistant(tool_calls) 消息 + 各自 tool 消息
+      （按 call_id 对齐；事件流里 tool-call/tool-result 是逐条交错的，这里累积到
+      assistant-message 边界再统一展开，满足 OpenAI 兼容流的配对顺序）。
+    [教学简化] 不覆盖 compaction/error 等旁注投影；这些事件不进消息历史。
+    """
+    messages: list[dict] = []
+    tool_calls: list[dict] = []
+    tool_results: list[dict] = []
+
+    def flush_tool_batch():
+        nonlocal tool_calls, tool_results
+        if tool_calls:
+            messages.append({"role": "assistant", "content": None, "tool_calls": list(tool_calls)})
+        messages.extend(tool_results)
+        tool_calls = []
+        tool_results = []
+
+    for ev in events:
+        t = ev.type
+        p = ev.payload
+        if t == "user-message":
+            flush_tool_batch()
+            messages.append({"role": "user", "content": p.get("text", "")})
+        elif t == "assistant-message":
+            flush_tool_batch()
+            messages.append({"role": "assistant", "content": p.get("content", "")})
+        elif t == "tool-call":
+            args = p.get("arguments", {})
+            if not isinstance(args, str):
+                args = json.dumps(args, ensure_ascii=False)
+            tool_calls.append({
+                "id": p.get("call_id", f"call-{len(tool_calls)}"),
+                "type": "function",
+                "function": {"name": p.get("name", ""), "arguments": args},
+            })
+        elif t == "tool-result":
+            tool_results.append({
+                "role": "tool",
+                "tool_call_id": p.get("call_id", f"call-{len(tool_results)}"),
+                "content": p.get("result", ""),
+            })
+    flush_tool_batch()
+    return messages
 
 
 class ReactLoopAgent:
@@ -184,7 +235,7 @@ class ReactLoopAgent:
         for i, chunk in enumerate(tool_calls):
             call_id = chunk.id or f"call-{i}"
             args = _parse_arguments(chunk.arguments)
-            self.session.append("tool-call", {"name": chunk.name, "arguments": args})
+            self.session.append("tool-call", {"name": chunk.name, "arguments": args, "call_id": call_id})
 
             result = await self.ctx.tools.execute(
                 ToolExecution(call_id=call_id, name=chunk.name or "", arguments=args)
@@ -195,6 +246,7 @@ class ReactLoopAgent:
                     "name": chunk.name,
                     "result": result.content,
                     "is_error": result.is_error,
+                    "call_id": call_id,
                 },
             )
             self.messages.append(
@@ -243,7 +295,12 @@ class AgentLoop(CapabilityProvider):
                                                options=agent.options), lambda: None)
 
             async def resume_agent(self, owner_ctx, options):
-                return await self.create_agent(owner_ctx, options)
+                owner = owner_ctx if owner_ctx is not None else loop.ctx
+                session_id = options.get("resume_session_id")
+                events = options.get("events")
+                agent = loop.resume(session_id, events=events)
+                return AgentHandle(PublicAgent(agent_id=agent.id, session=agent.session,
+                                               options=agent.options), lambda: None)
 
         ctx.agents.set_factory(LoopAgentFactory())
 
@@ -254,6 +311,21 @@ class AgentLoop(CapabilityProvider):
         self.agents[session.id] = agent
         self._publish_agent(agent)
         self.ctx.emit("agent/session-start", {"session_id": session.id, "agent": agent})
+        return agent
+
+    def resume(self, session_id: str, events: list | None = None) -> ReactLoopAgent:
+        """resume：恢复一个持久会话（session_id + 已落盘事件），agent 接着聊。
+
+        对应官方 AgentRegistry.resume + loop 的 ResumeAgentOptions(resumeSessionId)。
+        [教学简化] 事件由调用方从持久化后端 load 后传入；无持久化后端时 events=None
+        → 建空会话（等同 create 但沿用给定 id）。消息历史经 ``derive_messages`` 反投影。
+        """
+        session = self.ctx.sessions.resume(session_id, events=events)
+        agent = ReactLoopAgent(self.ctx, session)
+        agent.messages = derive_messages(session.events())
+        self.agents[session.id] = agent
+        self._publish_agent(agent)
+        self.ctx.emit("agent/session-start", {"session_id": session.id, "agent": agent, "resumed": True})
         return agent
 
     def _publish_agent(self, agent):

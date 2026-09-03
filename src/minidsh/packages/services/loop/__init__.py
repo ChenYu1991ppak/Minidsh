@@ -14,6 +14,6 @@ SessionProjection 的机制，v1 不做投影，compaction（T14）直接改写�
 from __future__ import annotations
 
 from .inbox import Inbox
-from .agent_loop import AgentLoop, ReactLoopAgent
+from .agent_loop import AgentLoop, ReactLoopAgent, derive_messages
 
-__all__ = ["AgentLoop", "ReactLoopAgent", "Inbox"]
+__all__ = ["AgentLoop", "ReactLoopAgent", "derive_messages", "Inbox"]
