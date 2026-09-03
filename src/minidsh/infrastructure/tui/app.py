@@ -16,7 +16,7 @@ from textual.widgets import Footer, Input, Static, Label
 from rich.text import Text
 
 from .transcript import Turn, Block, fold
-from .bridge import EventMessage
+from .bridge import EventMessage, NewSessionMessage
 
 __all__ = ["TuiApp"]
 
@@ -72,6 +72,8 @@ class TuiApp(App):
         self._queue: asyncio.Queue = asyncio.Queue()
         self._drive_task: asyncio.Task | None = None
         self._refresh_pending: bool = False
+        self._agent_latest = False
+        self._agent_ref = [agent]     # callable 视角的当前 agent（drive 经它跟随切换）
 
     def compose(self) -> ComposeResult:
         yield Container(Label("mini-dsh", id="status-label"), id="status")
@@ -117,7 +119,9 @@ class TuiApp(App):
         self._events = list(self.agent.session.events())
         self._update_status()
         subscribe(self.ctx, self.post_message)
-        self._drive_task = asyncio.create_task(drive(self.agent, self._queue, self.ctx))
+        self._drive_task = asyncio.create_task(
+            drive(lambda: self._agent_ref[0], self._queue, self.ctx)
+        )
         self.set_focus(self.query_one("#input", Input))
         # 有历史就立即渲染（不等新事件到达）
         if self._events:
@@ -160,16 +164,23 @@ class TuiApp(App):
         await self._queue.put(text)
 
     async def _new_session(self) -> None:
-        """新建会话：结束当前会话上下文，让用户开新会话。
+        """新建会话：切换到一个新 agent（进程保持，不退出）。
 
-        退出当前 App（bridge 驱动 flush 当前会话落盘），让上层进程重启或重新 create。
-        这里采用「标记 + 退出」语义：flush 后 exit，下次启动默认接最新会话（就是刚 flush 的）。
+        经 NewSessionMessage 在 App 主循环里安全切换——不能直接在输入 handler 里
+        换 self.agent（驱动 task 正在消费队列，synchro 需回到 app 消息循环）。
         """
-        from .bridge import shutdown
+        from .bridge import NewSessionMessage
 
-        # 先 flush 当前会话，再投递退出。新会话由用户下次 minidsh（默认接最新）承担。
-        await shutdown(self.agent, self._queue, self.ctx)
-        self.exit()
+        self.post_message(NewSessionMessage())
+
+    def on_new_session_message(self, message) -> None:
+        loop = self.ctx.probe("agent_loop")
+        new_agent = loop.create()          # 新 Session（session-000N 递增）
+        self._agent_ref[0] = new_agent     # 驱动 task 下次 send 跟随新 agent
+        self.agent = new_agent
+        self._events = []                  # 清空转录
+        self._transcript.update(Text("（新会话）"))
+        self._refresh_status()
 
     async def _switch_model(self, model_id: str) -> None:
         spec = self.ctx.config.find(model_id)

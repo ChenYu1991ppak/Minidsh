@@ -11,7 +11,7 @@ import asyncio
 
 from textual.message import Message
 
-__all__ = ["EventMessage", "subscribe", "drive", "shutdown"]
+__all__ = ["EventMessage", "NewSessionMessage", "subscribe", "drive", "shutdown"]
 
 
 class EventMessage(Message):
@@ -20,6 +20,13 @@ class EventMessage(Message):
     def __init__(self, event):
         super().__init__()
         self.event = event
+
+
+class NewSessionMessage(Message):
+    """请求切换到一个新会话（/new）。由 App 的 on_new_session_message 处理。"""
+
+    def __init__(self):
+        super().__init__()
 
 
 def subscribe(ctx, post_message) -> None:

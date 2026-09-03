@@ -205,6 +205,36 @@ async def test_resume_seeds_history_into_transcript():
 
 
 @pytest.mark.asyncio
+async def test_new_session_switches_agent_without_exit():
+    """/new 切换新 agent，进程保持（不 exit），转录清空。"""
+    from textual.widgets import Input
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    # 需要一个 agent_loop 服务供 /new 调 create
+    from minidsh.packages.services.loop import AgentLoop
+    loop = AgentLoop(ctx)
+    ctx.provide("agent_loop", loop)
+
+    start_agent = loop.create()
+    app = TuiApp(ctx, start_agent)
+    async with app.run_test() as pilot:
+        inp = app.query_one("#input", Input)
+        inp.focus()
+        await pilot.press(*"/new", "enter")
+        await pilot.pause()
+
+        assert app.agent is not start_agent        # 换了新 agent
+        assert app.agent.session.id != start_agent.session.id
+        assert app._events == []                   # 转录清空
+        # 进程未退出（app 仍在运行）
+        assert app.is_running
+
+
+@pytest.mark.asyncio
 async def test_thinking_slash_command_reconfigures_effort():
     from textual.widgets import Input
 
