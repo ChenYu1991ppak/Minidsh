@@ -103,3 +103,131 @@ async def test_app_renders_turns_on_event():
         assert "回你" in transcript.content
         # 状态栏显示了会话 id
         assert session.id in app.query_one("#status-label").content
+
+
+# ---------- M4 斜杠命令（/model /thinking） ----------
+
+
+class _FakeLlm:
+    """可 reconfigure 的假 llm，记录切模型/切档位调用。"""
+
+    def __init__(self):
+        self.model = "demo-a"
+        self.reasoning_effort = "medium"
+        self.reconfigs = []
+
+    def reconfigure(self, spec):
+        self.reconfigs.append(spec)
+        self.model = spec.id
+        self.reasoning_effort = spec.reasoning_effort
+
+
+class _FakeConfig:
+    def __init__(self, models):
+        self.models = {m["id"]: type("Spec", (), m)() for m in models}
+        self._current = self.models[models[0]["id"]]
+
+    def find(self, model_id):
+        return self.models.get(model_id)
+
+    @property
+    def current(self):
+        return self._current
+
+
+@pytest.mark.asyncio
+async def test_model_slash_command_reconfigures_and_keeps_session():
+    from textual.widgets import Input
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    config = _FakeConfig([
+        {"id": "demo-a", "url": "u", "reasoning_effort": "medium"},
+        {"id": "demo-b", "url": "u2", "reasoning_effort": "high"},
+    ])
+    ctx.provide("llm", llm)
+    ctx.provide("config", config)
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        inp = app.query_one("#input", Input)
+        inp.focus()
+        await pilot.press(*"/model demo-b", "enter")
+        await pilot.pause()
+
+        assert llm.reconfigs[-1].id == "demo-b"
+        assert llm.model == "demo-b"
+        # 同会话续聊：会话没换
+        assert app.agent.session is session
+        # model-change 事件已记录
+        assert session.events()[-1].type == "model-change"
+        # 状态栏更新为 demo-b
+        assert "demo-b" in app.query_one("#status-label").content
+
+
+@pytest.mark.asyncio
+async def test_thinking_slash_command_reconfigures_effort():
+    from textual.widgets import Input
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    config = _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}])
+    ctx.provide("config", config)
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        inp = app.query_one("#input", Input)
+        inp.focus()
+        await pilot.press(*"/thinking high", "enter")
+        await pilot.pause()
+
+        assert llm.reasoning_effort == "high"
+        assert session.events()[-1].type == "model-change"
+        assert "high" in app.query_one("#status-label").content
+
+
+@pytest.mark.asyncio
+async def test_thinking_invalid_level_rejected():
+    from textual.widgets import Input
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    config = _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}])
+    ctx.provide("config", config)
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        inp = app.query_one("#input", Input)
+        inp.focus()
+        await pilot.press(*"/thinking ultra", "enter")
+        await pilot.pause()
+
+        # 非法档位：强度不变，报错提示
+        assert llm.reasoning_effort == "medium"
+        assert "非法档位" in app.query_one("#transcript").content

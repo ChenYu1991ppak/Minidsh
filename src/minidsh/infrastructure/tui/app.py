@@ -74,6 +74,9 @@ class TuiApp(App):
     # ---------- 生命周期 ----------
 
     def _find_model(self) -> str:
+        # 以 llm 当前实际模型为准（reconfigure 后即时反映，含 /model 切换）
+        if self.ctx.has("llm"):
+            return getattr(self.ctx.llm, "model", "?") or "?"
         cfg = self.ctx.probe("config") if self.ctx.has("config") else None
         return getattr(cfg, "current_model_id", None) or "?"
 
@@ -87,7 +90,8 @@ class TuiApp(App):
     def on_event_message(self, message: EventMessage) -> None:
         self._events.append(message.event)
         turns = fold(self._events)
-        self._transcript.update(turns and self._transcript.render_turns(turns))
+        # render_turns 内部有「空则等待输入」兜底，恒返回 str
+        self._transcript.update(self._transcript.render_turns(turns))
         # 模型/强度切换事件也要刷新状态栏
         if message.event.type == "model-change":
             self._refresh_status()
