@@ -29,6 +29,9 @@ class _Transcript(Static):
             if turn.kind == "user":
                 lines.append(f"### 你\n\n{turn.text}")
             else:
+                if turn.thinking:
+                    # 思考用 dim（Textual markup 灰/暗色），与回复区分
+                    lines.append(f"[dim]{turn.thinking}[/dim]")
                 lines.append(f"### assistant\n\n{turn.text}")
                 for block in turn.blocks:
                     lines.append(self._render_block(block))
@@ -76,7 +79,7 @@ class TuiApp(App):
 
     def _update_status(self) -> None:
         self.query_one("#status-label", Label).update(
-            f"mini-dsh  模型 {self._model}  会话 {self.agent.session.id}"
+            f"mini-dsh  模型 {self._model}（{self._effort}）  会话 {self.agent.session.id}"
         )
 
     # ---------- 事件消息 ----------
@@ -85,16 +88,28 @@ class TuiApp(App):
         self._events.append(message.event)
         turns = fold(self._events)
         self._transcript.update(turns and self._transcript.render_turns(turns))
+        # 模型/强度切换事件也要刷新状态栏
+        if message.event.type == "model-change":
+            self._refresh_status()
 
     async def on_mount(self) -> None:
         from .bridge import subscribe, drive
 
         self._model = self._find_model()
+        self._effort = self._find_effort()
         self._transcript = self.query_one("#transcript", _Transcript)
         self._update_status()
         subscribe(self.ctx, self.post_message)
         self._drive_task = asyncio.create_task(drive(self.agent, self._queue, self.ctx))
         self.set_focus(self.query_one("#input", Input))
+
+    def _refresh_status(self) -> None:
+        self._model = self._find_model()
+        self._effort = self._find_effort()
+        self._update_status()
+
+    def _find_effort(self) -> str:
+        return getattr(self.ctx.llm, "reasoning_effort", "medium")
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         text = event.value.strip()
@@ -104,7 +119,36 @@ class TuiApp(App):
         if text == "/exit":
             await self._quit()
             return
+        if text.startswith("/model "):
+            await self._switch_model(text[len("/model "):].strip())
+            return
+        if text.startswith("/thinking "):
+            await self._switch_effort(text[len("/thinking "):].strip())
+            return
         await self._queue.put(text)
+
+    async def _switch_model(self, model_id: str) -> None:
+        spec = self.ctx.config.find(model_id)
+        if spec is None:
+            self._transcript.update(f"[bold red]未知模型：{model_id}[/bold red]")
+            return
+        self.ctx.llm.reconfigure(spec)
+        self.agent.session.append("model-change", {"model": spec.id})
+        self._refresh_status()
+
+    async def _switch_effort(self, level: str) -> None:
+        from minidsh.infrastructure.config import REASONING_EFFORTS
+
+        if level not in REASONING_EFFORTS:
+            self._transcript.update(f"[bold red]非法档位：{level}[/bold red]（{sorted(REASONING_EFFORTS)}）")
+            return
+        spec = self.ctx.config.current
+        if spec is None:
+            return
+        spec.reasoning_effort = level
+        self.ctx.llm.reconfigure(spec)
+        self.agent.session.append("model-change", {"model": self.ctx.llm.model, "effort": level})
+        self._refresh_status()
 
     async def action_quit(self) -> None:
         await self._quit()

@@ -94,3 +94,28 @@ def test_multiple_turns_sequence():
     assert [(t.kind, t.text) for t in turns] == [
         ("user", "a"), ("assistant", "A"), ("user", "b"), ("assistant", "B"),
     ]
+
+
+def test_reasoning_folds_into_thinking():
+    events = [
+        _ev(0, "user-message", text="问题"),
+        _ev(1, "reasoning-chunk", text="让我"),
+        _ev(2, "reasoning-chunk", text="想想"),
+        _ev(3, "assistant-chunk", text="答"),
+        _ev(4, "assistant-message", content="答案", stop_reason="end-turn"),
+    ]
+    turns = fold(events)
+    assert turns[1].thinking == "让我想想"   # 思考进 thinking，不进 text
+    assert turns[1].text == "答案"
+
+
+def test_reasoning_rendered_with_dim_markup():
+    from minidsh.infrastructure.tui.app import _Transcript
+
+    turns = fold([
+        _ev(0, "reasoning-chunk", text="思考"),
+        _ev(1, "assistant-message", content="回复", stop_reason="end-turn"),
+    ])
+    out = _Transcript().render_turns(turns)
+    assert "[dim]思考[/dim]" in out       # 思考分色
+    assert "回复" in out

@@ -32,10 +32,11 @@ class Block:
 
 @dataclass
 class Turn:
-    """一轮对话。kind = user | assistant；assistant 有流式文本 + 子块。"""
+    """一轮对话。kind = user | assistant；assistant 有流式思考 + 回复 + 子块。"""
 
     kind: str                 # "user" | "assistant"
-    text: str = ""            # user 消息正文 / assistant 流式累积文本
+    text: str = ""            # user 消息正文 / assistant 流式累积回复文本
+    thinking: str = ""        # assistant 思考累积（reasoning-chunk）
     blocks: list[Block] = field(default_factory=list)
 
 
@@ -82,6 +83,11 @@ def fold(events) -> list[Turn]:
             if current is None or current.kind != "assistant":
                 current = _new_turn("assistant", turns)
             current.text += payload.get("text", "")
+
+        elif etype == "reasoning-chunk":
+            if current is None or current.kind != "assistant":
+                current = _new_turn("assistant", turns)
+            current.thinking += payload.get("text", "")
 
         elif etype == "assistant-message":
             # flush 边界：锁定该 assistant turn（文本以 message content 为准）

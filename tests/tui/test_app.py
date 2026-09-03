@@ -80,6 +80,8 @@ async def test_app_renders_turns_on_event():
 
     ctx = Context()
     ctx.provide("sessions", SessionStore(ctx))
+    # on_mount 里读 ctx.llm.reasoning_effort → 需提供一个 llm
+    ctx.provide("llm", type("Llm", (), {"reasoning_effort": "medium", "model": "fake"})())
     session = ctx.sessions.create()
 
     class _Agent:
