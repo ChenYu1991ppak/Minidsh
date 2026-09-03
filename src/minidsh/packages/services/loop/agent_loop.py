@@ -14,12 +14,13 @@ react 决策：一 turn 内可多 step——模型若发起 tool-call，则执�
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from minidsh.cordis import CapabilityProvider
 from ..session import Session
 from ..tool_runtime import ToolExecution
 from .inbox import Inbox
-from ..llm import Chunk
+from ..llm import Chunk, softmap
 
 __all__ = ["AgentLoop", "ReactLoopAgent"]
 
@@ -113,13 +114,17 @@ class ReactLoopAgent:
         for _ in range(_MAX_REACT_STEPS):
             tool_calls: list[Chunk] = []
             text_parts: list[str] = []
+            reasoning_parts: list[str] = []
             chunk_seqs: list[int] = []
             stop_reason: str | None = None
 
             async for chunk in self.ctx.llm.stream(
                 self.messages, system_prompt=system_text, tools=tools
             ):
-                if chunk.kind == "text-delta":
+                if chunk.kind == "reasoning-delta":
+                    ev = self.session.append("reasoning-chunk", {"text": chunk.reasoning})
+                    reasoning_parts.append(chunk.reasoning)
+                elif chunk.kind == "text-delta":
                     ev = self.session.append("assistant-chunk", {"text": chunk.text})
                     chunk_seqs.append(ev.seq)
                     text_parts.append(chunk.text)
@@ -128,18 +133,27 @@ class ReactLoopAgent:
                 elif chunk.kind == "finish":
                     stop_reason = chunk.stop_reason
 
+            # 工具调用轮：assistant 消息按需带 reasoning_content 回传（软映射层判
+            # requires_reasoning_history → 保留；否则 strip）。见 _execute_tools。
+            reasoning = "".join(reasoning_parts)
             if tool_calls:
-                await self._execute_tools(tool_calls)
+                await self._execute_tools(tool_calls, reasoning=reasoning)
                 continue  # 下一模型 turn：工具结果已进消息历史
 
             # 无工具调用 → 文本收尾，产出聚合回复（= 持久化 flush 边界）
             content = "".join(text_parts)
-            self.messages.append({"role": "assistant", "content": content})
+            assistant_msg: dict[str, Any] = {"role": "assistant", "content": content}
+
+            # 纯文本轮：仅当模型要求回传时才把 reasoning 放进旁路字段
+            if reasoning and softmap.requires_reasoning_history(self.ctx.llm.model):
+                assistant_msg["reasoning_content"] = reasoning
+            self.messages.append(assistant_msg)
             self.session.append(
                 "assistant-message",
                 {
                     "content": content,
                     "stop_reason": stop_reason,
+                    "reasoning": reasoning,
                     "chunk_seqs": chunk_seqs,
                 },
             )
@@ -148,23 +162,24 @@ class ReactLoopAgent:
         # 步数耗尽（异常态）：显式报错，不让会话静默悬挂
         self.session.append("error", {"message": f"max react steps ({_MAX_REACT_STEPS}) exceeded"})
 
-    async def _execute_tools(self, tool_calls: list[Chunk]):
+    async def _execute_tools(self, tool_calls: list[Chunk], reasoning: str = ""):
         """执行一批工具调用，回填消息历史与事件流。"""
-        # 1) assistant 消息体（tool_calls 形式）进历史
-        self.messages.append(
-            {
-                "role": "assistant",
-                "content": None,
-                "tool_calls": [
-                    {
-                        "id": c.id or f"call-{i}",
-                        "type": "function",
-                        "function": {"name": c.name, "arguments": c.arguments or "{}"},
-                    }
-                    for i, c in enumerate(tool_calls)
-                ],
-            }
-        )
+        # 1) assistant 消息体（tool_calls 形式）进历史；reasoning 按需回传
+        assistant_msg: dict[str, Any] = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": c.id or f"call-{i}",
+                    "type": "function",
+                    "function": {"name": c.name, "arguments": c.arguments or "{}"},
+                }
+                for i, c in enumerate(tool_calls)
+            ],
+        }
+        if reasoning and softmap.requires_reasoning_history(self.ctx.llm.model):
+            assistant_msg["reasoning_content"] = reasoning
+        self.messages.append(assistant_msg)
         # 2) 逐个执行，产 tool-call / tool-result 会话事件 + tool 角色消息
         for i, chunk in enumerate(tool_calls):
             call_id = chunk.id or f"call-{i}"

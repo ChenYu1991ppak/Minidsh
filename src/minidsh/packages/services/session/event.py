@@ -21,8 +21,10 @@ class SessionEventType(str, Enum):
     USER_MESSAGE = "user-message"          # 用户输入
     ASSISTANT_CHUNK = "assistant-chunk"    # 模型逐段输出
     ASSISTANT_MESSAGE = "assistant-message"  # 模型一轮聚合回复（= flush 边界）
+    REASONING_CHUNK = "reasoning-chunk"    # 模型思考逐段输出（reasoning_content）
     TOOL_CALL = "tool-call"                # 模型发起工具调用
     TOOL_RESULT = "tool-result"            # 工具执行结果回填
+    MODEL_CHANGE = "model-change"          # 运行时切换模型 / 思考强度
     SKILL_LOADED = "skill-loaded"          # 技能被加载并注入
     SUBAGENT_SPAWN = "subagent-spawn"      # 子 agent 派生
     SUBAGENT_RESULT = "subagent-result"    # 子 agent 返回
