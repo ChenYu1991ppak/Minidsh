@@ -85,3 +85,32 @@ async def test_requires_history_family_echoes_reasoning():
 async def test_non_requires_history_family_strips_reasoning():
     assert not softmap.requires_reasoning_history("gpt-4o")
     assert not softmap.requires_reasoning_history("fake-llm")
+
+
+# ---------- 两轮对话不回挂死（TUI 第二轮卡死的回归） ----------
+
+
+async def test_two_turns_with_tool_do_not_hang():
+    """第一轮工具调用、第二轮文本——两轮都完整产出，历史消息正确追加。"""
+    script = [
+        {"text": "第一答"},
+        {"tool_calls": [("bash", '{"cmd":"echo hi"}', "call-0")]},
+        {"text": "第二答"},
+    ]
+    ctx, loop = _assemble(script)
+    agent = loop.create()
+
+    agent.send("第一问")
+    await agent.run()
+    agent.send("第二问")
+    await agent.run()
+
+    types = [e.type for e in agent.session]
+    assert types.count("user-message") == 2
+    assert types.count("tool-result") == 1
+    assert types.count("assistant-message") == 2
+    # 消息历史：user / (assistant+tool...) / user / assistant
+    roles = [m["role"] for m in agent.messages]
+    assert roles.count("user") == 2
+    assert "tool" in roles
+    assert roles[-1] == "assistant"

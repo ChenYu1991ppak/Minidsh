@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 
 from textual.app import App, ComposeResult
-from textual.containers import Container
+from textual.containers import Container, VerticalScroll
 from textual.widgets import Footer, Input, Static, Label
 from rich.text import Text
 
@@ -58,7 +58,8 @@ class TuiApp(App):
     """
 
     CSS = """
-    #transcript { height: 1fr; overflow-y: auto; padding: 1; }
+    #transcript-scroll { height: 1fr; padding: 1; }
+    #transcript { height: auto; }
     #status { height: 1; }
     .input-row { height: 3; }
     """
@@ -70,10 +71,12 @@ class TuiApp(App):
         self._events: list = []
         self._queue: asyncio.Queue = asyncio.Queue()
         self._drive_task: asyncio.Task | None = None
+        self._refresh_pending: bool = False
 
     def compose(self) -> ComposeResult:
         yield Container(Label("mini-dsh", id="status-label"), id="status")
-        yield _Transcript(id="transcript")
+        with VerticalScroll(id="transcript-scroll"):
+            yield _Transcript(id="transcript")
         yield Input(placeholder="输入消息…（Ctrl+D 或输入 /exit 退出）", id="input")
         yield Footer()
 
@@ -95,12 +98,13 @@ class TuiApp(App):
 
     def on_event_message(self, message: EventMessage) -> None:
         self._events.append(message.event)
-        turns = fold(self._events)
-        # render_turns 内部有「空则等待输入」兜底，恒返回 str
-        self._transcript.update(self._transcript.render_turns(turns))
-        # 模型/强度切换事件也要刷新状态栏
+        # 刷新合并到下一帧渲染：事件可能在高频到达（流式 chunk），逐条 update 会
+        # 反复重算整棵树 + 反复向 App 提交重绘，压垮事件循环，表现为「第二轮卡死」。
         if message.event.type == "model-change":
             self._refresh_status()
+        if not getattr(self, "_refresh_pending", False):
+            self._refresh_pending = True
+            self.call_after_refresh(self._flush_transcript)
 
     async def on_mount(self) -> None:
         from .bridge import subscribe, drive
@@ -120,6 +124,15 @@ class TuiApp(App):
 
     def _find_effort(self) -> str:
         return getattr(self.ctx.llm, "reasoning_effort", "medium")
+
+    def _flush_transcript(self) -> None:
+        """在下一帧一次性重算 + 重绘转录（合并高频事件到达的多次刷新）。"""
+        self._refresh_pending = False
+        turns = fold(self._events)
+        self._transcript.update(self._transcript.render_turns(turns))
+        # 内容增长时随输出下移到最底（force=True 覆盖用户暂停滚动）
+        scroll = self.query_one("#transcript-scroll", VerticalScroll)
+        scroll.scroll_end(animate=False, force=True)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         text = event.value.strip()
