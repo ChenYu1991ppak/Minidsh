@@ -50,6 +50,7 @@ minidsh = "minidsh.infrastructure.boot.cli:main"
 "minidsh.persistence-jsonl" = "minidsh.packages.services.persistence.providers.jsonl"
 "minidsh.persistence-sqlite" = "minidsh.packages.services.persistence.providers.sqlite"
 "minidsh.app-tui-textual" = "minidsh.infrastructure.tui.app_plugin"
+"minidsh.app-tui" = "minidsh.infrastructure.tui.app_pi_tui"
 "minidsh.acp" = "minidsh.packages.services.acp.providers.acp"
 "minidsh.app-acp" = "minidsh.packages.services.acp.app"
 

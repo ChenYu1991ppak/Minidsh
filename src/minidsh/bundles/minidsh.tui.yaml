@@ -1,0 +1,9 @@
+# tui bundle：pi-tui 终端前端（app 插件）。
+# 经 ``minidsh --profile tui`` 启动 pi-tui 前端（前端内部 spawn ACP backend）。
+# launcher 进程只负责 spawn 前端，不需要 llm/trace-render（前端自己 spawn
+# ``minidsh --profile acp`` 或 ``acp-fake`` 作 ACP backend）。
+remove:
+  - minidsh.llm-openai
+  - minidsh.trace-render
+plugins:
+  - minidsh.app-tui

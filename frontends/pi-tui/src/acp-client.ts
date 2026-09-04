@@ -57,8 +57,11 @@ export class AcpClient extends EventEmitter {
   /** Start the ACP subprocess and wait for it to be ready. */
   async start(overrides?: Partial<AcpClientOptions>): Promise<void> {
     const opts: AcpClientOptions = { ...this.options, ...overrides };
-    const bin = opts.bin ?? "minidsh";
-    const args = ["--profile", "acp", ...(opts.extraArgs ?? [])];
+    // MINIDSH_BIN 由 launcher（minidsh --profile tui）注入；否则默认 "minidsh"
+    const bin = process.env.MINIDSH_BIN ?? opts.bin ?? "minidsh";
+    // ACP 后端 profile：默认 acp，可用 MINIDSH_ACP_PROFILE 覆盖（如 acp-fake 免 API key）
+    const profile = process.env.MINIDSH_ACP_PROFILE ?? "acp";
+    const args = ["--profile", profile, ...(opts.extraArgs ?? [])];
     const cwd = opts.cwd ?? process.cwd();
 
     this.proc = spawn(bin, args, {
