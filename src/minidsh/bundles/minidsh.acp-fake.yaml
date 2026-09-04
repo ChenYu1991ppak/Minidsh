@@ -1,0 +1,9 @@
+# acp-fake bundle：在 base 基础上换用假 LLM + ACP server（无需 API key，供前端测试）。
+# ``minidsh --profile acp-fake`` 启动 ACP server，假 LLM 回放预置脚本
+#（环境变量 MINIDSH_FAKE_SCRIPT 或默认 "你好！"）。
+remove:
+  - minidsh.llm-openai
+plugins:
+  - minidsh.llm-fake
+  - minidsh.acp
+  - minidsh.app-acp
