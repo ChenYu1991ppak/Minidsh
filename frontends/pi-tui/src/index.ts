@@ -223,14 +223,11 @@ async function main(): Promise<void> {
   // ── Input handling ──
 
   tui.addInputListener((data: string): TuiInputListenerResult => {
-    // Global hotkeys
+    // 全局热键（Ctrl+C 取消），不消费——让 focused component（Input）正常接收输入。
+    // pi-tui 的 handleTerminalInput 先跑 inputListeners 再跑 focusedComponent.handleInput，
+    // 所以这里只做快捷键拦截，不重复转发给 Input（否则 Input 收到两次输入）。
     if (matchesKey(data, Key.ctrl("c"))) {
       acp.sessionCancel(state.sessionId!);
-      return { consume: true };
-    }
-    // Forward to input area
-    if (inputArea.focused) {
-      inputArea.handleInput(data);
       return { consume: true };
     }
     return undefined;

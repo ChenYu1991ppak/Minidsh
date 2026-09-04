@@ -70,7 +70,12 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         )
 
     def _to_update(self, event) -> dict | None:
-        """映射一条会话事件为 ACP session/update 的 ``{sessionUpdate, ...}`` 片段。"""
+        """映射一条会话事件为 ACP session/update 的 ``{sessionUpdate, ...}`` 片段。
+
+        ``assistant-chunk``（流式增量）→ ``agent_message_chunk``；``assistant-message``
+        是 flush 边界（含完整聚合文本），其内容已由前面的 ``assistant-chunk`` 流式发送，
+        故**不**再映射，否则前端收到两遍。
+        """
         t = event.type
         p = event.payload
         if t == "assistant-chunk":
@@ -79,9 +84,6 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         if t == "reasoning-chunk":
             return {"sessionUpdate": AGENT_THOUGHT_CHUNK,
                     "content": {"type": "text", "text": p.get("text", "")}}
-        if t == "assistant-message":
-            return {"sessionUpdate": AGENT_MESSAGE_CHUNK,
-                    "content": {"type": "text", "text": p.get("content", "")}}
         if t == "tool-call":
             return {"sessionUpdate": TOOL_CALL,
                     "toolCallId": p.get("call_id"),
