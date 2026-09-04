@@ -132,12 +132,16 @@ class Context(EventMethods):
         """新服务到达后逐个复查 PENDING fiber：满足才加载。
 
         fiber.ts:249-251 的反面：PENDING + deps_satisfied() 不满足 → 不加载而等待。
+        循环经 remove 前判存在：activate 里可能再次 provide → 递归 settle，此时
+        外层循环剩余的 fiber 已被里层 settle 移除并激活，需跳过而非二次 remove。
         """
         while True:
             ready = [f for f in self._pending if f.deps_satisfied()]
             if not ready:
                 return
             for fiber in ready:
+                if fiber not in self._pending:
+                    continue  # 已被递归 settle 移除并激活
                 self._pending.remove(fiber)
                 fiber.activate()
 
