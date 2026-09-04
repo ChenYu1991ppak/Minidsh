@@ -1,0 +1,4 @@
+# acp bundle：在 base 基础上追加 ACP server（供外部程序经 JSON-RPC 调用）。
+plugins:
+  - minidsh.acp
+  - minidsh.app-acp

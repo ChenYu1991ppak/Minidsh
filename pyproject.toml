@@ -49,6 +49,8 @@ minidsh = "minidsh.infrastructure.boot.cli:main"
 "minidsh.persistence-jsonl" = "minidsh.packages.services.persistence.providers.jsonl"
 "minidsh.persistence-sqlite" = "minidsh.packages.services.persistence.providers.sqlite"
 "minidsh.app-tui-textual" = "minidsh.infrastructure.tui.app_plugin"
+"minidsh.acp" = "minidsh.packages.services.acp.providers.acp"
+"minidsh.app-acp" = "minidsh.packages.services.acp.app"
 
 [tool.setuptools.dynamic]
 version = {attr = "minidsh.__version__"}
