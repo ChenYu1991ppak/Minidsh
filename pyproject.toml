@@ -48,6 +48,7 @@ minidsh = "minidsh.infrastructure.boot.cli:main"
 "minidsh.trace-render" = "minidsh.packages.services.session.reporting.trace_render"
 "minidsh.persistence-jsonl" = "minidsh.packages.services.persistence.providers.jsonl"
 "minidsh.persistence-sqlite" = "minidsh.packages.services.persistence.providers.sqlite"
+"minidsh.app-tui-textual" = "minidsh.infrastructure.tui.app_plugin"
 
 [tool.setuptools.dynamic]
 version = {attr = "minidsh.__version__"}

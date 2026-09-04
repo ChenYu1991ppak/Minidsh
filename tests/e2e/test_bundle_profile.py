@@ -91,11 +91,11 @@ def test_profile_plugins_accumulate(tmp_path, monkeypatch):
 # ---------- loader 统一路径（无 _bundles 特殊 import） ----------
 
 
-def test_loader_uses_profile_not_bundles_import():
+def test_loader_uses_profile_not_hardcoded_bundles():
+    """loader 不走旧硬编码 bundle 机制，走 resolve_profile + extra_bundles 参数。"""
     import minidsh.infrastructure.boot.loader as loader
 
     src = open(loader.__file__, encoding="utf-8").read()
-    assert "_bundles" not in src
     assert "resolve_profile" in src
     entries = loader._profile_plugins(None, None, None, quiet=False)
     assert len(entries) == 29

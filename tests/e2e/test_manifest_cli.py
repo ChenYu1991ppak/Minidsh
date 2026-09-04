@@ -29,16 +29,16 @@ def _fake_ctx():
     return ctx
 
 
-def _stub_tui_launch(monkeypatch, capture=None):
-    """把 TUI 启动入口替换为 no-op（测试不启动真终端），可捕获 (ctx, agent)。"""
+def _stub_app(monkeypatch, capture=None):
+    """把 app 插件 apply 替换为 no-op（测试不启动真终端），可捕获 (ctx, args)。"""
     from minidsh.infrastructure.boot import cli as cli_module
 
-    def fake_launch(ctx, agent):
+    def fake_apply(ctx, args):
         if capture is not None:
-            capture.append((ctx, agent))
+            capture.append((ctx, args))
         return 0
 
-    monkeypatch.setattr(cli_module, "_launch_tui_app", fake_launch)
+    monkeypatch.setattr(cli_module, "find_app_plugin", lambda ctx, entries: fake_apply)
 
 
 class _FakeSession:
@@ -70,12 +70,12 @@ def test_run_profile_path_vs_name(tmp_path, monkeypatch):
     """--profile 文件存在 → argv 覆盖路径；不存在 → 命名 profile 名。"""
     captured = {}
 
-    def spy_load(project_dir, *, storage=None, profile=None, argv_path=None, **kw):
-        captured.update(profile=profile, argv_path=argv_path)
+    def spy_load(project_dir, *, storage=None, profile=None, argv_path=None, extra_bundles=None, **kw):
+        captured.update(profile=profile, argv_path=argv_path, extra_bundles=extra_bundles)
         return _fake_ctx()
 
     monkeypatch.setattr(cli_module, "load_project", spy_load)
-    _stub_tui_launch(monkeypatch)
+    _stub_app(monkeypatch)
 
     # 文件存在 → argv_path
     mine = tmp_path / "mine.yaml"
@@ -84,11 +84,14 @@ def test_run_profile_path_vs_name(tmp_path, monkeypatch):
     assert captured["argv_path"] == str(mine)
     assert captured["profile"] is None
 
-    # 名字（不存在）→ profile 名
+    # 名字（不存在）→ profile 名（被 load_project 接收）
     captured.clear()
     _run_cli(["--profile", "demo", "./demo"], stdin_text="")
-    assert captured["profile"] == "demo"
+    # demo 不是文件也不在 ~/.minidsh/profiles/ → 被 _boot 转为 extra_bundle
+    # 但 profile 参数仍传给 load_project（为 None，因 bundle 走 extra_bundles）
+    assert captured["profile"] is None
     assert captured["argv_path"] is None
+    assert captured["extra_bundles"] == ["minidsh.demo"]
 
 
 def test_reject_invalid_storage_choice():
@@ -108,12 +111,12 @@ def test_tui_bare_and_dir_dispatch(tmp_path, monkeypatch):
         return real_ctx
 
     monkeypatch.setattr(cli_module, "load_project", spy_load)
-    _stub_tui_launch(monkeypatch, capture=captured.setdefault("launches", []))
+    _stub_app(monkeypatch, capture=captured.setdefault("launches", []))
 
     code, _, _ = _run_cli(["./demo"], stdin_text="你好\n\nquit\n")
     assert code == 0
     assert captured["loaded"]
-    assert captured["launches"]  # TUI 启动入口被调用（agent 已 create）
+    assert captured["launches"]  # app 插件 apply 被调用（agent 由插件自建）
     assert captured["dirs"][-1] == "./demo"
 
 

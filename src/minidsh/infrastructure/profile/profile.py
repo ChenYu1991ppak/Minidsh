@@ -66,6 +66,7 @@ def resolve_profile(
     project_dir: str | Path | None = None,
     user_home: str | Path | None = None,
     argv_path: str | Path | None = None,
+    extra_bundles: list[str] | None = None,
 ) -> list[PluginRef]:
     """解析覆盖链，返回最终 plugins 名单（累加 + remove 已应用）。
 
@@ -79,6 +80,7 @@ def resolve_profile(
     - bundles 覆盖：取「最后写 bundles 的那层」的非 base 部分 + [minidsh.base]。
     - plugins 累加：跨层同名替换、不同名追加。
     - remove 全局删。
+    - ``extra_bundles``：额外 bundle 名，追加到 base 之后（如 ``tui-textual`` 前端 bundle）。
     """
     from ...infrastructure.config.files import user_config_dir
 
@@ -103,6 +105,10 @@ def resolve_profile(
             bs = layer["bundles"]
             if isinstance(bs, list) and all(isinstance(b, str) for b in bs):
                 bundles = [BUILTIN_BUNDLE_NAME] + [b for b in bs if b != BUILTIN_BUNDLE_NAME]
+
+    # extra_bundles 追加到 base 之后（launcher 的 --profile <bundle> 落点）
+    if extra_bundles:
+        bundles = bundles + [b for b in extra_bundles if b not in bundles]
 
     # 展开 bundles 的 plugins（base + 选定 bundles，按序 merge）
     plugin_layers: list[list[PluginRef]] = []

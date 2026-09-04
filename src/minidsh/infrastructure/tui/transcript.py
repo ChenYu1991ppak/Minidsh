@@ -125,14 +125,15 @@ def fold(events) -> list[Turn]:
                 header=f"⌘ {payload.get('name', 'tool')} {args}".strip(),
                 state="pending",
             )
-            pending_tools[payload.get("name", block.header)] = block
+            # 按 call_id 配对（同名工具多次调用不互相覆盖；旧事件流无 call_id 时退回 name）
+            pending_tools[payload.get("call_id") or payload.get("name", block.header)] = block
             if current is None or current.kind != "assistant":
                 current = _new_turn("assistant", turns)
             current.blocks.append(block)
 
         elif etype == "tool-result":
             name = payload.get("name", "")
-            block = _pop_by_name(pending_tools, name)
+            block = _pop_tool(pending_tools, name, payload.get("call_id"))
             if block is not None:
                 block.body = bound_body(payload.get("result", ""))
                 block.state = "error" if payload.get("is_error") else "done"
@@ -227,8 +228,16 @@ def fold(events) -> list[Turn]:
     return turns
 
 
-def _pop_by_name(pending: dict[str, Block], name: str) -> Block | None:
-    """按名字摘取一个 pending tool block（多工具按序配对，简单可靠）。"""
+def _pop_tool(pending: dict[str, Block], name: str, call_id: str | None) -> Block | None:
+    """按 call_id 优先、name 次之、FIFO 兜底摘取一个 pending tool block。
+
+    同名工具连续调用时（两条 bash）call_id 保证正确配对；旧事件流无 call_id
+    时退回 name 匹配；再退 FIFO（多工具按序配对，简单可靠）。
+    """
+    if call_id is not None and call_id in pending:
+        return pending.pop(call_id)
+    if name in pending:
+        return pending.pop(name)
     if pending:
         key = next(iter(pending))
         return pending.pop(key)

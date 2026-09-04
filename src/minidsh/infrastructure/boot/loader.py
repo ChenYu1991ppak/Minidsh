@@ -32,6 +32,7 @@ def load_project(
     profile: str | None = None,
     plugins: list[PluginRef] | None = None,
     argv_path: str | Path | None = None,
+    extra_bundles: list[str] | None = None,
     extra_resolver=None,
 ) -> Context:
     """加载项目目录，装配能力图，返回 Context。
@@ -41,6 +42,7 @@ def load_project(
     - ``profile``：profile 名（或路径）；None = 默认 [minidsh.base]。
     - ``plugins``：（测试用）显式 plugins 名单，跳过覆盖链。
     - ``argv_path``：argv 覆盖 profile 文件（优先级最高）。
+    - ``extra_bundles``：额外 bundle 名（追加到 base 之后；如 ``tui-textual``）。
     - ``extra_resolver``：第三方插件查找器（entry-point 发现）。
     """
     root = Path(project_dir).resolve()
@@ -56,7 +58,7 @@ def load_project(
     if plugins is not None:
         entries = plugins
     else:
-        entries = _profile_plugins(profile, root, argv_path, quiet)
+        entries = _profile_plugins(profile, root, argv_path, quiet, extra_bundles)
 
     # storage 覆盖：持久化 provider 是平级插件（jsonl/sqlite），CLI --storage 转成
     # 「移除未选中的、追加选中的」——provider 选择走清单，不走进 provider 内部 if 分支。
@@ -94,9 +96,12 @@ def _profile_plugins(
     root: Path,
     argv_path: str | Path | None,
     quiet: bool,
+    extra_bundles: list[str] | None = None,
 ) -> list[PluginRef]:
     """解析覆盖链 → 最终 plugins 名单；quiet 时剔除 trace-render。"""
-    merged = resolve_profile(profile=profile, project_dir=root, argv_path=argv_path)
+    merged = resolve_profile(
+        profile=profile, project_dir=root, argv_path=argv_path, extra_bundles=extra_bundles
+    )
     return [
         r for r in merged
         if not (quiet and r.name == "minidsh.trace-render")

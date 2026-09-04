@@ -1,0 +1,4 @@
+# tui-textual bundle：在 base 基础上追加 Textual TUI app 插件。
+# 经 ``minidsh --profile tui-textual`` 启动交互式终端前端。
+plugins:
+  - minidsh.app-tui-textual

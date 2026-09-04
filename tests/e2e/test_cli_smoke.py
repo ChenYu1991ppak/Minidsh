@@ -35,8 +35,8 @@ def _run_cli(argv, stdin_text=""):
 
 
 def _patch_loader(monkeypatch, script=None):
-    """把 cli.load_project 换成注入假 llm provider 插件的版本；并用 headless TUI
-    测试驱动替代真终端 run（agent 经会话事件折回转录）。"""
+    """把 cli.load_project 换成注入假 llm provider 插件的版本；并用 headless app
+    驱动替代真 TUI（agent 经会话事件折回转录）。"""
     from minidsh.infrastructure.boot import cli as cli_module
 
     def fake_load(project_dir, *, storage=None, **kw):
@@ -59,16 +59,18 @@ def _patch_loader(monkeypatch, script=None):
             monkeypatch.setattr(llm_pg, "apply", orig_apply)
 
     monkeypatch.setattr(cli_module, "load_project", fake_load)
-    # TUI 启动换成 headless 驱动：读 stdin 逐行驱动（等价旧 _run_repl），退出 flush，
-    # 输出会话转录（Transcript render，不启动真终端）。
-    from minidsh.infrastructure.boot.cli import _launch_tui_app
 
-    def fake_launch(ctx, agent):
+    # app 插件替换成 headless 驱动：读 stdin 逐行驱动（等价旧 _run_repl），退出 flush，
+    # 输出会话转录（Transcript render，不启动真终端）。
+    def fake_app_apply(ctx, args):
         from minidsh.infrastructure.tui.transcript import fold
         from minidsh.infrastructure.tui.app import _Transcript
 
         import asyncio
         import sys as _sys
+
+        loop = ctx.agent_loop
+        agent = loop.create()
 
         async def _drive():
             for line in _sys.stdin:
@@ -88,7 +90,7 @@ def _patch_loader(monkeypatch, script=None):
         _sys.stdout.write(_Transcript().render_turns(turns).plain)
         return 0
 
-    monkeypatch.setattr(cli_module, "_launch_tui_app", fake_launch)
+    monkeypatch.setattr(cli_module, "find_app_plugin", lambda ctx, entries: fake_app_apply)
 
 
 DEMO = Path(__file__).resolve().parents[2] / "examples" / "demo"
