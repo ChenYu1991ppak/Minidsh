@@ -205,12 +205,22 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         try:
             agent.send(text)
             await agent.run()
-            write_response(message_id, {"stopReason": "end_turn"})
+            self._safe_write(lambda: write_response(message_id, {"stopReason": "end_turn"}))
         except asyncio.CancelledError:
-            write_response(message_id, {"stopReason": "cancelled"})
+            self._safe_write(lambda: write_response(message_id, {"stopReason": "cancelled"}))
             raise
+        except BrokenPipeError:
+            # 客户端（pi-tui 前端）已退出，管道断裂——静默收敛，不再尝试写响应
+            pass
         finally:
             self._running.pop(session_id, None)
+
+    def _safe_write(self, fn) -> None:
+        """写协议响应；客户端已断开（BrokenPipeError）时静默忽略，不让后台 task 崩溃。"""
+        try:
+            fn()
+        except BrokenPipeError:
+            pass
 
     def _cancel(self, params: dict, message_id: Any) -> None:
         """取消当前 turn：取消该 session 的运行中 task。"""

@@ -15,6 +15,8 @@ import {
   Input,
   Key,
   matchesKey,
+  truncateToWidth,
+  wrapTextWithAnsi,
   type Component,
   type Focusable,
   type TuiInputListenerResult,
@@ -47,18 +49,10 @@ function bold(text: string): string {
 
 function wrapLines(text: string, width: number): string[] {
   if (width <= 0) return text.split("\n");
+  // wrapTextWithAnsi 是 pi-tui 官方换行工具：按可见宽度换行，保留 ANSI 码
   const lines: string[] = [];
   for (const line of text.split("\n")) {
-    if (line.length <= width) {
-      lines.push(line);
-      continue;
-    }
-    let remaining = line;
-    while (remaining.length > width) {
-      lines.push(remaining.slice(0, width));
-      remaining = remaining.slice(width);
-    }
-    if (remaining) lines.push(remaining);
+    lines.push(...wrapTextWithAnsi(line, width));
   }
   return lines;
 }
@@ -66,47 +60,50 @@ function wrapLines(text: string, width: number): string[] {
 // ── Components ─────────────────────────────────────────────────────────────
 
 /** Status bar: model, effort, session id, token usage. */
-function statusBar(_width: number): string[] {
+function statusBar(width: number): string[] {
   const usage = state.usage;
   const pct = usage?.totalTokens && usage?.contextWindow
     ? ` ${Math.round(usage.totalTokens / usage.contextWindow * 100)}%`
     : "";
   const line = ` mini-dsh  ${state.model}(${state.effort})${pct}  ${state.sessionId ?? "connecting..."}`;
-  return [line];
+  return [truncateToWidth(line, width)];
 }
 
 /** Transcript: accumulated entries with tool calls. */
 function transcript(width: number): string[] {
   const lines: string[] = [];
+  if (width <= 0) width = 80;
   for (const entry of state.entries) {
     if (entry.kind === "thought" && entry.text) {
       const trimmed = entry.text.length > THINKING_MAX_CHARS
         ? entry.text.slice(0, THINKING_MAX_CHARS) + "…"
         : entry.text;
-      for (const l of trimmed.split("\n")) {
+      // 先按可见宽度 wrap，再整体加 dim（避免超宽行压垮渲染引擎）
+      for (const l of wrapLines(trimmed, width)) {
         lines.push(dim(l));
       }
     } else if (entry.role === "user") {
-      lines.push(bold("## You"));
+      lines.push(truncateToWidth(bold("## You"), width));
       lines.push(...wrapLines(entry.text, width));
     } else if (entry.role === "assistant" && entry.text) {
-      lines.push(bold("## Assistant"));
+      lines.push(truncateToWidth(bold("## Assistant"), width));
       lines.push(...wrapLines(entry.text, width));
-      lines.push("");
     }
   }
   // Tool calls
   for (const tc of state.toolCalls.values()) {
     const icon = tc.status === "in_progress" ? "⏳" : "✓";
-    lines.push(dim(`${icon} ${tc.name}`));
+    lines.push(truncateToWidth(dim(`${icon} ${tc.name}`), width));
     if (tc.resultText) {
       const truncated = tc.resultText.length > MAX_TOOL_RESULT_CHARS
         ? tc.resultText.slice(0, MAX_TOOL_RESULT_CHARS) + "\n…(truncated)"
         : tc.resultText;
-      lines.push(...truncated.split("\n").map(l => `  ${l}`));
+      for (const l of truncated.split("\n")) {
+        lines.push(...wrapLines(`  ${l}`, width));
+      }
     }
   }
-  return lines.length > 0 ? lines : ["Welcome to mini-dsh. Type a message to start."];
+  return lines.length > 0 ? lines : [truncateToWidth("Welcome to mini-dsh. Type a message to start.", width)];
 }
 
 /** Input area: editable field with prompt. */
