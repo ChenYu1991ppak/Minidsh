@@ -7,7 +7,7 @@ name = "minidsh"
 dynamic = ["version"]
 description = "最小化 DeepSeek Harness（dsh）：cordis 内核 + agent-loop + tools/skills/subagent/compaction，全程可观测"
 requires-python = ">=3.11"
-dependencies = ["openai>=1.0", "pyyaml>=6.0", "textual>=0.80"]
+dependencies = ["openai>=1.0", "pyyaml>=6.0", "textual>=0.80", "httpx>=0.27"]
 
 [project.optional-dependencies]
 test = ["pytest>=7", "pytest-asyncio", "pytest-cov"]
@@ -39,6 +39,12 @@ minidsh = "minidsh.infrastructure.boot.cli:main"
 "minidsh.loop" = "minidsh.packages.services.loop.providers.loop"
 "minidsh.compaction" = "minidsh.packages.services.compaction.providers.compaction"
 "minidsh.token-meter" = "minidsh.packages.services.token_meter.providers.token_meter"
+"minidsh.approval" = "minidsh.packages.services.approval.providers.approval"
+"minidsh.web" = "minidsh.packages.services.web.providers.runtime"
+"minidsh.web-fetch" = "minidsh.packages.services.web.providers.fetch_http"
+"minidsh.tool-web" = "minidsh.packages.tools.web"
+"minidsh.lsp" = "minidsh.packages.services.lsp.providers.runtime"
+"minidsh.tool-lsp" = "minidsh.packages.tools.lsp"
 "minidsh.trace-render" = "minidsh.packages.services.session.reporting.trace_render"
 "minidsh.persistence-jsonl" = "minidsh.packages.services.persistence.providers.jsonl"
 "minidsh.persistence-sqlite" = "minidsh.packages.services.persistence.providers.sqlite"

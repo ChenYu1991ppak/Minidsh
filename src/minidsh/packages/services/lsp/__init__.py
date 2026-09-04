@@ -1,10 +1,37 @@
-"""lsp 能力：代码语义 seam（seam 预留）。
+"""lsp 能力：代码语义 seam（ctx.lsp）。
 
-v1 为 no-op：四操作（definition/references/hover/completions）返回空，
-为未来接 language server 语义能力预留。
+四操作（goToDefinition / findReferences / goToImplementation / hover）+ provider 注册表。
 """
 from __future__ import annotations
 
-from .definition import LspService, NoopLspService
+from .definition import (
+    LspOperation,
+    LspPosition,
+    LspRange,
+    LspQueryRequest,
+    LspProviderQuery,
+    LspLocation,
+    LspHover,
+    LspQueryResult,
+    LspProvider,
+    LspService,
+    LspError,
+    final_extension,
+    LSP_OPERATIONS,
+)
 
-__all__ = ['LspService', 'NoopLspService']
+__all__ = [
+    "LspOperation",
+    "LspPosition",
+    "LspRange",
+    "LspQueryRequest",
+    "LspProviderQuery",
+    "LspLocation",
+    "LspHover",
+    "LspQueryResult",
+    "LspProvider",
+    "LspService",
+    "LspError",
+    "final_extension",
+    "LSP_OPERATIONS",
+]

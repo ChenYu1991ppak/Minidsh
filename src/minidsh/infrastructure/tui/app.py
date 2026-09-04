@@ -17,8 +17,31 @@ from rich.text import Text
 
 from .transcript import Turn, Block, fold
 from .bridge import EventMessage, NewSessionMessage
+from .commands import Command, CommandRegistry
 
 __all__ = ["TuiApp"]
+
+
+def _meta_summary(meta: dict) -> str:
+    """把结构化展示元数据压成一行摘要（M5）。
+
+    识别 web_fetch（url/statusCode/truncated）与 web_search（sources 数/truncated）；
+    其余返回空串（回退 header/body 文本）。纯展示层，不解析模型文本。
+    """
+    if not isinstance(meta, dict):
+        return ""
+    if "url" in meta and "statusCode" in meta:
+        line = f"Fetched {meta['url']} (HTTP {meta['statusCode']})"
+        if meta.get("truncated"):
+            line += " · truncated"
+        return line
+    if "sources" in meta:
+        n = len(meta.get("sources") or [])
+        line = f"{n} source(s)"
+        if meta.get("truncated"):
+            line += " · truncated"
+        return line
+    return ""
 
 
 class _Transcript(Static):
@@ -47,6 +70,11 @@ class _Transcript(Static):
     def _append_block(text: Text, block: Block) -> None:
         state_icon = {"pending": "⏳", "done": "✓", "error": "✗"}.get(block.state, "")
         text.append(f"{state_icon} {block.header}\n", style="dim")
+        # M5：有结构化展示元数据时，追加一行摘要（如 web_fetch 的 url/status/截断）
+        if block.meta:
+            meta_line = _meta_summary(block.meta)
+            if meta_line:
+                text.append(f"    {meta_line}\n", style="dim italic")
         if block.body:
             text.append(f"    {block.body}\n")
 
@@ -74,6 +102,18 @@ class TuiApp(App):
         self._refresh_pending: bool = False
         self._agent_latest = False
         self._agent_ref = [agent]     # callable 视角的当前 agent（drive 经它跟随切换）
+        self._commands = CommandRegistry()
+        # 四个内置命令注册进注册表（对齐官方 interaction/commands 的命令面）
+        self._commands.register(Command(
+            "exit", "退出 minidsh", lambda app, arg: app._quit()))
+        self._commands.register(Command(
+            "model", "切换模型（/model <id>）", lambda app, arg: app._switch_model(arg)))
+        self._commands.register(Command(
+            "thinking", "切换思考档位（/thinking <level>）", lambda app, arg: app._switch_effort(arg)))
+        self._commands.register(Command(
+            "new", "新建会话", lambda app, arg: app._new_session()))
+        # M6：人类审批应答状态（无待审批时 _approval_future 为 None）
+        self._approval_future: asyncio.Future | None = None
 
     def compose(self) -> ComposeResult:
         yield Container(Label("mini-dsh", id="status-label"), id="status")
@@ -92,9 +132,22 @@ class TuiApp(App):
         return getattr(cfg, "current_model_id", None) or "?"
 
     def _update_status(self) -> None:
+        # M7：token 用量 + session title（有 title 优先，无则回退 session id）
+        tokens = self._token_display()
+        title_or_id = self.agent.session.title or self.agent.session.id
         self.query_one("#status-label", Label).update(
-            f"mini-dsh  模型 {self._model}（{self._effort}）  会话 {self.agent.session.id}"
+            f"mini-dsh  模型 {self._model}（{self._effort}）  {tokens}  会话 {title_or_id}"
         )
+
+    def _token_display(self) -> str:
+        """（M7）从 tokenMeter 读当前 token 用量；不可用时回退 '?'."""
+        try:
+            if self.ctx.has("tokenMeter"):
+                measurement = self.ctx.tokenMeter.measure(self.agent.session)
+                return f"{measurement.surface_tokens} tokens"
+        except Exception:
+            pass
+        return "? tokens"
 
     # ---------- 事件消息 ----------
 
@@ -123,9 +176,61 @@ class TuiApp(App):
             drive(lambda: self._agent_ref[0], self._queue, self.ctx)
         )
         self.set_focus(self.query_one("#input", Input))
+        # M6：装配人类审批应答者（若 approval 服务已提供）
+        if self.ctx.has("approval"):
+            self.ctx.approval.register_answerer(self._human_approval)
         # 有历史就立即渲染（不等新事件到达）
         if self._events:
             self._flush_transcript()
+
+    # ---------- M6 人类审批应答者 ----------
+
+    async def _human_approval(self, req, next_):
+        """TUI 人类审批应答者（对齐官方 user-approval 的 UI 应答者）。
+
+        渲染审批提示 → 等待用户按键（y=允许 / n=拒绝 / esc=取消）→ 返回 outcome。
+        ``await`` 期间不阻塞事件循环（Future 由按键 handler 置位）。无待审批时
+        返回 ``None`` 委托下一应答者（此处即 fail-closed ``unavailable``）。
+        """
+        loop = asyncio.get_event_loop()
+        future = loop.create_future()
+        self._approval_future = future
+        # 审批期间禁用输入框，让 y/n/esc 冒泡到 App（而非被 Input 吞掉）
+        inp = self.query_one("#input", Input)
+        inp.disabled = True
+        reason = getattr(req, "reason", None) or ""
+        tool_name = getattr(req, "tool_name", "?")
+        from .transcript import bound_body
+        prompt = (f"⚠ 审批请求：{tool_name}"
+                  + (f" — {bound_body(reason, 200)}" if reason else "")
+                  + "  [y 允许 / n 拒绝 / esc 取消]")
+        self.query_one("#status-label", Label).update(prompt)
+        try:
+            outcome = await future
+            return outcome
+        finally:
+            self._approval_future = None
+            # 复位输入框 + 状态栏；teardown 期间 widget 可能已卸载，防御式忽略
+            try:
+                inp.disabled = False
+                self._refresh_status()
+                self.set_focus(inp)
+            except Exception:
+                pass
+
+    def _resolve_approval(self, outcome: str) -> None:
+        """按键置位待审批 Future（无待审批时忽略）。"""
+        if self._approval_future is not None and not self._approval_future.done():
+            self._approval_future.set_result(outcome)
+
+    def key_y(self) -> None:
+        self._resolve_approval("allowed-once")
+
+    def key_n(self) -> None:
+        self._resolve_approval("rejected")
+
+    def key_escape(self) -> None:
+        self._resolve_approval("cancelled")
 
     def _refresh_status(self) -> None:
         self._model = self._find_model()
@@ -140,26 +245,18 @@ class TuiApp(App):
         self._refresh_pending = False
         turns = fold(self._events)
         self._transcript.update(self._transcript.render_turns(turns))
-        # 内容增长时随输出下移到最底（force=True 覆盖用户暂停滚动）
+        # 只在用户本就停在底部时才跟随下移——用户上滚回看时不被强制打断。
         scroll = self.query_one("#transcript-scroll", VerticalScroll)
-        scroll.scroll_end(animate=False, force=True)
+        if scroll.scroll_y >= scroll.max_scroll_y - 1:
+            scroll.scroll_end(animate=False)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         text = event.value.strip()
         event.input.clear()
         if not text:
             return
-        if text == "/exit":
-            await self._quit()
-            return
-        if text.startswith("/model "):
-            await self._switch_model(text[len("/model "):].strip())
-            return
-        if text.startswith("/thinking "):
-            await self._switch_effort(text[len("/thinking "):].strip())
-            return
-        if text == "/new":
-            await self._new_session()
+        # 斜杠命令经注册表分发；未匹配的命令名降级为普通用户消息（对齐官方）
+        if await self._commands.dispatch(self, text):
             return
         await self._queue.put(text)
 

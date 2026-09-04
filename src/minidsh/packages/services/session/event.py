@@ -29,10 +29,25 @@ class SessionEventType(str, Enum):
     SUBAGENT_SPAWN = "subagent-spawn"      # 子 agent 派生
     SUBAGENT_RESULT = "subagent-result"    # 子 agent 返回
     COMPACTION = "compaction"              # 上下文压缩
+    TURN_START = "turn/start"              # 一轮对话开始（M4 边界事件）
+    TURN_END = "turn/end"                  # 一轮对话结束（M4 边界事件）
+    SESSION_TITLE = "session/title"        # 会话标题快照（M7，latest-wins）
+    APPROVAL_ASKED = "approval/asked"      # 审批请求发出（审计日志）
+    APPROVAL_DECIDED = "approval/decided"  # 审批结果（审计日志）
     ERROR = "error"                        # 错误
 
 
 _KNOWN_TYPES: frozenset[str] = frozenset(t.value for t in SessionEventType)
+
+# 审计面事件（surface=False）：只进日志、不进模型 transcript（M4 显式分层）。
+# 对齐官方「log-only audit, carries no surfaceOp」语义。
+AUDIT_TYPES: frozenset[str] = frozenset({
+    "approval/asked",
+    "approval/decided",
+    "turn/start",
+    "turn/end",
+    "session/title",
+})
 
 
 def _normalize_type(t: "SessionEventType | str") -> str:
@@ -50,16 +65,22 @@ class SessionEvent:
     """append-only 事件条目。seq 自增、创建后不可改（FrozenInstanceError）。
 
     对应 SessionEvent（types.ts:404）；frozen 对应 deepFreeze 的不可变语义。
+    ``surface``：表层/审计分层（M4）——``True`` 进模型 transcript，``False`` 仅日志；
+    由类型在 ``__post_init__`` 自动推导（审计类型强制 ``False``），调用方无需显式传。
     """
 
     session_id: str
     seq: int
     type: str
     payload: dict = field(default_factory=dict)
+    surface: bool = True
 
     def __post_init__(self):
         # 校验类型名（构造期即拒绝未知类型，杜绝脏数据进入日志）
         object.__setattr__(self, "type", _normalize_type(self.type))
+        # 审计类型强制 surface=False（显式分层，M4）
+        if self.type in AUDIT_TYPES:
+            object.__setattr__(self, "surface", False)
 
     def to_dict(self) -> dict:
         """展开为可 JSON 序列化的 dict（持久化序列化用）。"""
@@ -68,11 +89,16 @@ class SessionEvent:
             "seq": self.seq,
             "type": self.type,
             "payload": self.payload,
+            "surface": self.surface,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "SessionEvent":
-        """从 dict 还原（持久化反序列化用）。"""
+        """从 dict 还原（持久化反序列化用）。
+
+        ``surface`` 由类型在构造期自动推导；旧数据无 ``surface`` 字段也兼容
+        （审计类型仍推导为 ``False``，其余 ``True``）。
+        """
         return cls(
             session_id=data["session_id"],
             seq=data["seq"],

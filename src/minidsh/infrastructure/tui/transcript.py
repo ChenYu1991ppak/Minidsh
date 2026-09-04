@@ -12,7 +12,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-__all__ = ["Turn", "Block", "fold", "EMPTY_TURNS"]
+__all__ = ["Turn", "Block", "fold", "EMPTY_TURNS", "bound_body", "MAX_BLOCK_BODY_CHARS"]
+
+# 转录层有界渲染：单块正文上限。截断是**纯展示层**决策（只读视图模型，不回改
+# session 里的完整事件，模型侧仍拿到完整 result）。session-0002 的 web_fetch 抓到
+# 79KB HTML 直接把 Rich Text 排版压到 O(n²) 卡死，此上限在有界展示处兜底。
+MAX_BLOCK_BODY_CHARS = 2000
+
+
+def bound_body(body: str, max_chars: int = MAX_BLOCK_BODY_CHARS) -> str:
+    """有界正文：超限截断为前缀 + 截断标记；否则原样返回。
+
+    纯函数、无状态；M6 审批卡片也复用此函数（reason 有界展示）。
+    """
+    if body is None:
+        return ""
+    if len(body) <= max_chars:
+        return body
+    return f"{body[:max_chars]}\n…(截断，原文 {len(body)} 字符)"
 
 
 @dataclass
@@ -21,13 +38,16 @@ class Block:
 
     - ``header``：折叠标题（name + 摘要一行）；
     - ``body``：展开正文（工具结果 / 子代理摘要）；
-    - ``state``：``pending``（只看到 tool-call，等 tool-result）/ ``done`` / ``error``。
+    - ``state``：``pending``（只看到 tool-call，等 tool-result）/ ``done`` / ``error``；
+    - ``meta``：（M5 双通道）结构化展示元数据（工具 ``presentation_meta`` 产出，随
+      tool-result 事件落盘）。有则 UI 可渲染结构化卡片，无则回退 ``header``/``body`` 文本。
     """
 
     kind: str                 # "tool" | "subagent" | "compaction" | "skill" | "error"
     header: str
     body: str = ""
     state: str = "done"       # pending | done | error
+    meta: dict | None = None  # M5：结构化展示元数据（可选）
 
 
 @dataclass
@@ -66,6 +86,7 @@ def fold(events) -> list[Turn]:
     # 工具调用暂存区：call_id → (block, 所在 turn)；subagent 按 spawn 计数配对
     pending_tools: dict[str, Block] = {}
     pending_subagent: Block | None = None
+    pending_approvals: dict[str, Block] = {}   # M6：approval id → 审批块
 
     def collect_chunk(current: Turn, event) -> None:
         if current is not None and current.kind == "assistant":
@@ -113,16 +134,18 @@ def fold(events) -> list[Turn]:
             name = payload.get("name", "")
             block = _pop_by_name(pending_tools, name)
             if block is not None:
-                block.body = payload.get("result", "")
+                block.body = bound_body(payload.get("result", ""))
                 block.state = "error" if payload.get("is_error") else "done"
+                block.meta = payload.get("meta")   # M5：结构化展示元数据（可选）
             else:
                 # 孤立 tool-result（无 tool-call 前导）→ 当作独立旁注
                 current = _side_note_turn(current, turns)
                 current.blocks.append(Block(
                     kind="tool",
                     header=f"⌘ {name}",
-                    body=payload.get("result", ""),
+                    body=bound_body(payload.get("result", "")),
                     state="error" if payload.get("is_error") else "done",
+                    meta=payload.get("meta"),
                 ))
 
         elif etype == "subagent-spawn":
@@ -138,14 +161,14 @@ def fold(events) -> list[Turn]:
         elif etype == "subagent-result":
             if pending_subagent is not None:
                 pending_subagent.state = "done"
-                pending_subagent.body = payload.get("result", "")
+                pending_subagent.body = bound_body(payload.get("result", ""))
                 pending_subagent = None
             else:
                 current = _side_note_turn(current, turns)
                 current.blocks.append(Block(
                     kind="subagent",
                     header=f"⏵ {payload.get('agent', 'subagent')}",
-                    body=payload.get("result", ""),
+                    body=bound_body(payload.get("result", "")),
                 ))
 
         elif etype == "compaction":
@@ -153,7 +176,7 @@ def fold(events) -> list[Turn]:
             current.blocks.append(Block(
                 kind="compaction",
                 header="≡ 上下文压缩",
-                body=str(payload),
+                body=bound_body(str(payload)),
             ))
 
         elif etype == "skill-loaded":
@@ -170,6 +193,34 @@ def fold(events) -> list[Turn]:
                 header=f"✗ {payload.get('message', 'error')}",
                 state="error",
             ))
+
+        elif etype == "approval/asked":
+            # M6：审批请求旁注块（按 id 暂存，等 approval/decided 配对）
+            block = Block(
+                kind="approval",
+                header=f"⚠ 审批 {payload.get('tool_name', '?')}"
+                       + (f" — {payload.get('reason')}" if payload.get("reason") else ""),
+                state="pending",
+            )
+            pending_approvals[payload.get("id")] = block
+            current = _side_note_turn(current, turns)
+            current.blocks.append(block)
+
+        elif etype == "approval/decided":
+            block = pending_approvals.pop(payload.get("id"), None)
+            outcome = payload.get("outcome", "")
+            if block is not None:
+                block.state = "done" if outcome == "allowed-once" else "error"
+                block.body = bound_body(f"结果：{outcome}")
+            else:
+                # 孤立 decided（无对应 asked）→ 独立旁注
+                current = _side_note_turn(current, turns)
+                current.blocks.append(Block(
+                    kind="approval",
+                    header=f"⚠ 审批结果：{outcome}",
+                    body=bound_body(f"结果：{outcome}"),
+                    state="done" if outcome == "allowed-once" else "error",
+                ))
 
         # 未知事件类型忽略（白名单外不会发生，防御式跳过）
 

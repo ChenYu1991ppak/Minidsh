@@ -41,5 +41,5 @@ async def test_resume_then_append_no_seq_break(tmp_path):
     agent.send("新问题")
     await agent.run()   # 之前这里抛 ValueError: append seq 断裂
 
-    assert agent.session.events()[-1].type == "assistant-message"
+    assert agent.session.events()[-1].type == "turn/end"   # M4：末事件为 turn/end
     assert agent.session.events()[-1].seq == len(agent.session) - 1

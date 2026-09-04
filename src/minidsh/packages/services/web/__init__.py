@@ -1,9 +1,31 @@
-"""web 能力：检索 seam（seam 预留）。
+"""web 能力：检索 seam（ctx.web）。
 
-v1 为 no-op：search/fetch 均返回不可用标记，为未来接真实检索/抓取 provider 预留。
+管理 search/fetch provider 注册表 + 选择语义。
 """
 from __future__ import annotations
 
-from .definition import WebService, NoopWebService
+from .definition import (
+    WebSearchRequest,
+    WebSearchResult,
+    WebSearchSource,
+    WebFetchRequest,
+    WebFetchResult,
+    WebFetchBody,
+    WebSearchProvider,
+    WebFetchProvider,
+    WebRuntime,
+    WebError,
+)
 
-__all__ = ['WebService', 'NoopWebService']
+__all__ = [
+    "WebSearchRequest",
+    "WebSearchResult",
+    "WebSearchSource",
+    "WebFetchRequest",
+    "WebFetchResult",
+    "WebFetchBody",
+    "WebSearchProvider",
+    "WebFetchProvider",
+    "WebRuntime",
+    "WebError",
+]

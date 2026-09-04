@@ -93,13 +93,13 @@ def test_jsonl_roundtrip(tmp_path):
     s.append("user-message", {"text": "你好"})
     s.append("assistant-message", {"text": "回复"})
 
-    # 后端直读：两行合法 JSON，字段齐全
+    # 后端直读：两行合法 JSON，字段齐全（M4 起含 surface 分层标记）
     path = backend.log_path(s.id)
     lines = path.read_text(encoding="utf-8").strip("\n").split("\n")
     assert len(lines) == 2
     for line in lines:
         d = json.loads(line)
-        assert set(d) == {"session_id", "seq", "type", "payload"}
+        assert set(d) == {"session_id", "seq", "type", "payload", "surface"}
 
     loaded = backend.load_stored(s.id)
     assert loaded == s.events()  # 读回与内存日志相等

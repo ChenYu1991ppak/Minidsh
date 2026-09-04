@@ -53,6 +53,19 @@ class Session:
         """会话身份的不变元数据（供投影 init）。"""
         return SessionHeader(self.id, dict(self.meta))
 
+    @property
+    def title(self) -> str | None:
+        """会话标题（M7）：最后一条 ``session/title`` 事件的值（latest-wins）。
+
+        无标题事件时返回 ``None``（调用方回退 session id）。懒算：每次扫描日志，
+        会话事件量小，可接受。
+        """
+        title = None
+        for event in self.log:
+            if event.type == "session/title":
+                title = event.payload.get("title")
+        return title
+
     def append(self, type: str, payload: dict | None = None):
         """追加一条事件（index.ts:604-653）：seq == len(log)，广播 ``session/event``。
 

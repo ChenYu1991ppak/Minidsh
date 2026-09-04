@@ -64,14 +64,18 @@ async def test_one_in_one_out_with_persistence(tmp_path):
     assert len(replies) == 1
     assert replies[0].payload["content"] == "完成"
 
-    # 2) 事件序列覆盖契约类型：user / tool-call / tool-result / assistant-*
+    # 2) 事件序列覆盖契约类型：turn/start → user → session/title → tool-call → tool-result
+    #    → assistant-* → turn/end（M4 turn 边界 + M7 title）
     types = [e.type for e in events]
     assert types == [
+        "turn/start",
         "user-message",
+        "session/title",
         "tool-call",
         "tool-result",
         "assistant-chunk",
         "assistant-message",
+        "turn/end",
     ]
 
     # 3) 持久化：assistant-message 是 flush 边界，落盘后 load 回来与原日志等价

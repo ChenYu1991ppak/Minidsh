@@ -38,6 +38,24 @@ def _parse_arguments(raw: str | None) -> dict:
         return {"_raw": raw}
 
 
+def fallback_session_title(text: str, max_words: int = 8, max_bytes: int = 80) -> str:
+    """（M7）确定性会话标题 fallback（对齐官方 normalize.ts）。
+
+    清洗控制字符 → 空白归一 → 取前 ``max_words`` 词 → UTF-8 字节安全截断。
+    不连 LLM；首条 user-message 产 ``session/title`` 事件时调用。
+    """
+    import re
+
+    cleaned = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", " ", text)
+    words = cleaned.split()
+    title = " ".join(words[:max_words])
+    # UTF-8 安全截断（不劈开码点）
+    encoded = title.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return title
+    return encoded[:max_bytes].decode("utf-8", errors="ignore").rstrip()
+
+
 def derive_messages(events) -> list[dict]:
     """从会话事件流反投影出模型侧消息历史（官方 deriveMessages 的教学简化版）。
 
@@ -62,6 +80,9 @@ def derive_messages(events) -> list[dict]:
         tool_results = []
 
     for ev in events:
+        # M4 显式分层：跳过审计面事件（turn/start、turn/end、session/title、approval/*）
+        if not getattr(ev, "surface", True):
+            continue
         t = ev.type
         p = ev.payload
         if t == "user-message":
@@ -103,6 +124,9 @@ class ReactLoopAgent:
         self.options = options or {}
         self.inbox = Inbox()
         self.messages: list[dict] = []  # 模型侧对话历史（user/assistant/tool）
+        # M4：turn 边界计数与结果（turn/start / turn/end 配对）
+        self._turn_no = 0
+        self._turn_reason = "completed"
         # 桥接技能加载：ctx.skills.load 会广播 skills/change(op=load) →
         # 此处转成会话事件 skill-loaded（跨层桥接，见 T9/T10 分层契约）。
         ctx.on("skills/change", self._on_skill_change)
@@ -144,12 +168,24 @@ class ReactLoopAgent:
             stack.pop()
 
     async def turn(self):
-        """一个 turn：取消息 → 记录 user-message → react 循环。"""
+        """一个 turn：取消息 → 记录 user-message → react 循环（M4 产 turn 边界事件）。"""
+        self._turn_no += 1
+        turn_no = self._turn_no
+        self.session.append("turn/start", {"turn": turn_no})
         for message in self.inbox.claim():
             content = message.get("content", "")
             self.session.append("user-message", {"text": content})
             self.messages.append({"role": "user", "content": content})
+            # M7：首条 user-message 产确定性 session title fallback（不连 LLM）
+            if self._turn_no == 1:
+                title = fallback_session_title(content)
+                if title:
+                    self.session.append("session/title", {"title": title})
         await self._react()
+        self.session.append(
+            "turn/end", {"turn": turn_no, "reason": {"kind": self._turn_reason}}
+        )
+        self._turn_reason = "completed"
 
     async def _react(self):
         """react 主循环：模型调用 → 有工具调用则执行继续，无则收尾。"""
@@ -211,6 +247,7 @@ class ReactLoopAgent:
             return
 
         # 步数耗尽（异常态）：显式报错，不让会话静默悬挂
+        self._turn_reason = "error"
         self.session.append("error", {"message": f"max react steps ({_MAX_REACT_STEPS}) exceeded"})
 
     async def _execute_tools(self, tool_calls: list[Chunk], reasoning: str = ""):
@@ -240,15 +277,16 @@ class ReactLoopAgent:
             result = await self.ctx.tools.execute(
                 ToolExecution(call_id=call_id, name=chunk.name or "", arguments=args)
             )
-            self.session.append(
-                "tool-result",
-                {
-                    "name": chunk.name,
-                    "result": result.content,
-                    "is_error": result.is_error,
-                    "call_id": call_id,
-                },
-            )
+            tool_result_payload = {
+                "name": chunk.name,
+                "result": result.content,
+                "is_error": result.is_error,
+                "call_id": call_id,
+            }
+            # M5：展示元数据随事件落盘（仅当工具产出，避免引入空字段）
+            if result.meta is not None:
+                tool_result_payload["meta"] = result.meta
+            self.session.append("tool-result", tool_result_payload)
             self.messages.append(
                 {"role": "tool", "tool_call_id": call_id, "content": result.content}
             )
@@ -323,6 +361,11 @@ class AgentLoop(CapabilityProvider):
         session = self.ctx.sessions.resume(session_id, events=events)
         agent = ReactLoopAgent(self.ctx, session)
         agent.messages = derive_messages(session.events())
+        # M4：恢复 turn 计数——从历史 turn/start 的最大 turn 号续接，避免续聊重头
+        agent._turn_no = max(
+            (e.payload.get("turn", 0) for e in session.events() if e.type == "turn/start"),
+            default=0,
+        )
         self.agents[session.id] = agent
         self._publish_agent(agent)
         self.ctx.emit("agent/session-start", {"session_id": session.id, "agent": agent, "resumed": True})

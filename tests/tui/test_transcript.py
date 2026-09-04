@@ -135,3 +135,138 @@ def test_markup_brackets_not_parsed_as_style():
     out = _Transcript().render_turns(turns)
     # 含 [1, 2] 这类方括号的 payload 不再抛 MarkupError，原样渲染
     assert "[1," in out.plain or "天气" in out.plain
+
+
+# ---------- M1 bound_body ----------
+
+
+def test_bound_body_small():
+    from minidsh.infrastructure.tui.transcript import bound_body
+
+    assert bound_body("hi") == "hi"
+    assert bound_body("") == ""
+    assert bound_body(None) == ""
+
+
+def test_bound_body_large():
+    from minidsh.infrastructure.tui.transcript import bound_body, MAX_BLOCK_BODY_CHARS
+
+    big = "x" * (MAX_BLOCK_BODY_CHARS + 1000)
+    result = bound_body(big)
+    assert len(result) < len(big)
+    assert "截断" in result
+    assert f"原文 {len(big)} 字符" in result
+
+
+def test_bound_body_at_limit():
+    from minidsh.infrastructure.tui.transcript import bound_body, MAX_BLOCK_BODY_CHARS
+
+    exact = "y" * MAX_BLOCK_BODY_CHARS
+    assert bound_body(exact) == exact  # 恰好等于上限，不截断
+
+
+def test_large_body_in_fold_is_truncated():
+    """79KB tool-result 进 fold 后 body 被截断，不会再卡死 Rich Text。"""
+    from minidsh.infrastructure.tui.transcript import MAX_BLOCK_BODY_CHARS
+
+    huge = "Z" * 80_000
+    events = [
+        _ev(0, "tool-call", name="web_fetch", arguments={"url": "http://x"}),
+        _ev(1, "tool-result", name="web_fetch", result=huge, is_error=False),
+    ]
+    turns = fold(events)
+    body = turns[0].blocks[0].body
+    assert len(body) <= MAX_BLOCK_BODY_CHARS + 100  # 截断标记额外字符
+    assert "截断" in body
+
+
+def test_render_turns_output_has_upper_bound():
+    """render_turns 输出不再含 79KB 纯文本段。"""
+    from minidsh.infrastructure.tui.app import _Transcript
+    from minidsh.infrastructure.tui.transcript import MAX_BLOCK_BODY_CHARS
+
+    huge = "Q" * 80_000
+    turns = fold([
+        _ev(0, "tool-call", name="web_fetch", arguments={"url": "http://x"}),
+        _ev(1, "tool-result", name="web_fetch", result=huge, is_error=False),
+    ])
+    out = _Transcript().render_turns(turns)
+    # 输出总长度受限于截断后的 body + 少量装饰文本
+    assert len(out.plain) < MAX_BLOCK_BODY_CHARS + 2000
+
+
+def test_fold_consumes_meta():
+    """M5：tool-result 事件带 meta → Block.meta 承接。"""
+    events = [
+        _ev(0, "tool-call", name="web_fetch", arguments={"url": "http://x"}),
+        _ev(1, "tool-result", name="web_fetch", result="body", is_error=False,
+            meta={"url": "http://x", "statusCode": 200, "truncated": False}),
+    ]
+    turns = fold(events)
+    block = turns[0].blocks[0]
+    assert block.meta == {"url": "http://x", "statusCode": 200, "truncated": False}
+
+
+def test_fold_without_meta_is_none():
+    """无 meta 的 tool-result → Block.meta 为 None（向后兼容）。"""
+    events = [
+        _ev(0, "tool-call", name="bash", arguments={}),
+        _ev(1, "tool-result", name="bash", result="hi", is_error=False),
+    ]
+    turns = fold(events)
+    assert turns[0].blocks[0].meta is None
+
+
+def test_meta_summary_renders_fetch_and_search():
+    from minidsh.infrastructure.tui.app import _meta_summary
+
+    assert "http://x" in _meta_summary({"url": "http://x", "statusCode": 200, "truncated": False})
+    assert "truncated" in _meta_summary({"url": "http://x", "statusCode": 200, "truncated": True})
+    assert "2 source(s)" in _meta_summary({"sources": [1, 2], "truncated": False})
+    assert _meta_summary({"unknown": 1}) == ""
+    assert _meta_summary(None) == ""
+
+
+def test_approval_asked_decided_folds_to_block():
+    """M6：approval/asked + approval/decided 配对折叠成审批块。"""
+    events = [
+        _ev(0, "approval/asked", id="a1", tool_name="bash", reason="敏感操作"),
+        _ev(1, "approval/decided", id="a1", outcome="allowed-once"),
+    ]
+    turns = fold(events)
+    blocks = turns[0].blocks
+    assert len(blocks) == 1
+    assert blocks[0].kind == "approval"
+    assert blocks[0].state == "done"      # allowed-once → done
+    assert "bash" in blocks[0].header
+    assert "allowed-once" in blocks[0].body
+
+
+def test_approval_rejected_is_error_state():
+    events = [
+        _ev(0, "approval/asked", id="a2", tool_name="bash"),
+        _ev(1, "approval/decided", id="a2", outcome="rejected"),
+    ]
+    blocks = fold(events)[0].blocks
+    assert blocks[0].state == "error"
+
+
+def test_approval_pending_without_decided():
+    """只有 asked 无 decided → pending 状态。"""
+    events = [_ev(0, "approval/asked", id="a3", tool_name="bash")]
+    blocks = fold(events)[0].blocks
+    assert blocks[0].kind == "approval"
+    assert blocks[0].state == "pending"
+
+
+def test_approval_reason_bounded():
+    """审批 reason 超长被截断（有界展示）。"""
+    from minidsh.infrastructure.tui.transcript import MAX_BLOCK_BODY_CHARS
+
+    long_reason = "R" * (MAX_BLOCK_BODY_CHARS + 500)
+    events = [
+        _ev(0, "approval/asked", id="a4", tool_name="bash", reason=long_reason),
+        _ev(1, "approval/decided", id="a4", outcome="rejected"),
+    ]
+    blocks = fold(events)[0].blocks
+    assert len(blocks[0].body) < len(long_reason)

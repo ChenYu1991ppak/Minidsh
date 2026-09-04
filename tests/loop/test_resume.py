@@ -96,6 +96,8 @@ async def test_resume_replays_history_then_continues():
     agent.send("第二问")
     await agent.run()
 
-    # 历史不重复广播（adopt 不重发 session/event），事件流 = 旧 2 + 新 user + chunk + assistant
-    assert len(agent.session) == 5
-    assert agent.session.events()[-1].payload["content"] == "接着答"
+    # 历史不重复广播（adopt 不重发 session/event）；事件流 = 旧 2 + 新
+    # （turn/start + user + session/title + chunk + assistant-message + turn/end，M4/M7）
+    assert len(agent.session) == 8
+    am = [e for e in agent.session if e.type == "assistant-message"][-1]
+    assert am.payload["content"] == "接着答"

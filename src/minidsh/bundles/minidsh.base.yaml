@@ -21,6 +21,12 @@ plugins:
   - minidsh.agents-md
   - minidsh.loop
   - minidsh.token-meter
+  - minidsh.approval
+  - minidsh.web
+  - minidsh.web-fetch
+  - minidsh.tool-web
+  - minidsh.lsp
+  - minidsh.tool-lsp
   - minidsh.compaction
   - minidsh.trace-render
   - minidsh.persistence-jsonl

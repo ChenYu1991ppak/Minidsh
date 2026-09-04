@@ -14,6 +14,13 @@ from .runtime import (
     PreToolDecision,
     PostToolDecision,
 )
+from .guard import (
+    ToolGuard,
+    GuardRegistry,
+    RepeatedToolReminder,
+    DEFAULT_REPEAT_THRESHOLDS,
+    GENTLE_REMINDER,
+)
 
 __all__ = [
     "ToolDefinition",
@@ -23,4 +30,9 @@ __all__ = [
     "ToolRuntime",
     "PreToolDecision",
     "PostToolDecision",
+    "ToolGuard",
+    "GuardRegistry",
+    "RepeatedToolReminder",
+    "DEFAULT_REPEAT_THRESHOLDS",
+    "GENTLE_REMINDER",
 ]

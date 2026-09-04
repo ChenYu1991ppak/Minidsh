@@ -292,3 +292,273 @@ async def test_thinking_invalid_level_rejected():
         # 非法档位：强度不变，报错提示
         assert llm.reasoning_effort == "medium"
         assert "非法档位" in app.query_one("#transcript").content
+
+
+# ---------- M3 命令注册表 ----------
+
+
+def test_command_registry_dispatch_and_fallback():
+    from minidsh.infrastructure.tui.commands import Command, CommandRegistry
+
+    reg = CommandRegistry()
+    calls = []
+
+    async def _h(app, arg):
+        calls.append(("hello", arg))
+
+    reg.register(Command("hello", "打招呼", _h))
+
+    async def _run():
+        assert await reg.dispatch(None, "/hello world") is True
+        assert calls == [("hello", "world")]
+        # 未注册命令 → False（调用方降级为消息）
+        assert await reg.dispatch(None, "/unknown x") is False
+        # 非 / 开头 → False
+        assert await reg.dispatch(None, "hello") is False
+
+    import asyncio
+    asyncio.run(_run())
+
+
+def test_command_registry_name_validation():
+    from minidsh.infrastructure.tui.commands import Command, CommandRegistry
+
+    reg = CommandRegistry()
+    import pytest as _pt
+    with _pt.raises(ValueError):
+        reg.register(Command("Bad-Upper", "x", lambda app, arg: None))
+    with _pt.raises(ValueError):
+        reg.register(Command("9starts-digit", "x", lambda app, arg: None))
+
+
+def test_command_registry_register_returns_disposer():
+    from minidsh.infrastructure.tui.commands import Command, CommandRegistry
+
+    reg = CommandRegistry()
+    dispose = reg.register(Command("foo", "x", lambda app, arg: None))
+    assert len(reg._commands) == 1
+    dispose()
+    assert len(reg._commands) == 0
+
+
+def test_command_registry_duplicate_rejected():
+    from minidsh.infrastructure.tui.commands import Command, CommandRegistry
+
+    reg = CommandRegistry()
+    reg.register(Command("dup", "x", lambda app, arg: None))
+    import pytest as _pt
+    with _pt.raises(ValueError):
+        reg.register(Command("dup", "y", lambda app, arg: None))
+
+
+@pytest.mark.asyncio
+async def test_unknown_command_falls_through_to_queue():
+    """未注册的 /foo 降级为普通用户消息（被 drive 消费进 agent，非命令分发）。"""
+    from textual.widgets import Input
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    session = ctx.sessions.create()
+
+    class _Agent:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, text):
+            self.sent.append(text)
+
+        async def run(self):
+            pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        inp = app.query_one("#input", Input)
+        inp.focus()
+        await pilot.press(*"/not-a-real-cmd arg", "enter")
+        await pilot.pause()
+        # 降级为普通消息 → 被 drive 消费进 agent.send（非命令）
+        assert agent.sent == ["/not-a-real-cmd arg"]
+
+
+# ---------- M6 TUI 审批交互 ----------
+
+
+@pytest.mark.asyncio
+async def test_approval_prompt_renders_and_resolves():
+    """TUI 人类应答者：渲染审批提示 + 应答者机制返回 outcome。"""
+    import asyncio as _aio
+    from minidsh.packages.services.approval import ApprovalProvider, ApprovalRequest
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    ApprovalProvider(ctx)
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        req = ApprovalRequest(agent=agent, tool_name="bash", reason="敏感")
+        task = _aio.create_task(app._human_approval(req, None))
+        await pilot.pause()
+        # 审批提示已渲染到状态栏
+        label = app.query_one("#status-label")
+        assert "审批" in str(label.content)
+        # 模拟按键 handler 置位（等价 key_y → _resolve_approval）
+        app._resolve_approval("allowed-once")
+        await pilot.pause()
+        outcome = await task
+        assert outcome == "allowed-once"
+        assert app._approval_future is None  # 已清理
+
+
+@pytest.mark.asyncio
+async def test_approval_reject_and_cancel_resolution():
+    """_resolve_approval 覆盖 rejected / cancelled 两种 outcome。"""
+    import asyncio as _aio
+    from minidsh.packages.services.approval import ApprovalProvider, ApprovalRequest
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    ApprovalProvider(ctx)
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        req = ApprovalRequest(agent=agent, tool_name="bash")
+        task = _aio.create_task(app._human_approval(req, None))
+        await pilot.pause()
+        app._resolve_approval("rejected")
+        assert await task == "rejected"
+
+        req2 = ApprovalRequest(agent=agent, tool_name="bash")
+        task2 = _aio.create_task(app._human_approval(req2, None))
+        await pilot.pause()
+        app._resolve_approval("cancelled")
+        assert await task2 == "cancelled"
+
+
+def test_approval_key_handlers_map_to_resolution():
+    """key_y/key_n/key_escape 正确映射到 _resolve_approval。"""
+    import asyncio as _aio
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    # 未挂载时 key handler 直接调用 _resolve_approval（无待审批 future → 忽略，不抛）
+    app.key_y()
+    app.key_n()
+    app.key_escape()
+    assert app._approval_future is None
+
+
+# ---------- M7 状态栏 token 用量 + session title ----------
+
+
+@pytest.mark.asyncio
+async def test_status_shows_title_when_present():
+    """有 session/title 事件 → 状态栏优先显示 title。"""
+    from minidsh.packages.services.session import SessionEvent
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+    # 预置标题 + 历史（模拟 resume）
+    session.log = [
+        SessionEvent(session.id, 0, "session/title", {"title": "写代码"}),
+        SessionEvent(session.id, 1, "user-message", {"text": "帮我"}),
+    ]
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        assert "写代码" in app.query_one("#status-label").content
+        assert session.id not in app.query_one("#status-label").content  # title 优先
+
+
+@pytest.mark.asyncio
+async def test_status_shows_token_usage():
+    """状态栏显示 token 用量（有 tokenMeter 时）。"""
+    from minidsh.packages.services.token_meter import TokenMeterService
+
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    TokenMeterService(ctx)
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        assert "tokens" in app.query_one("#status-label").content
+
+
+@pytest.mark.asyncio
+async def test_status_falls_back_to_session_id():
+    """无 title → 状态栏回退 session id；无 tokenMeter → '? tokens'。"""
+    ctx = Context()
+    ctx.provide("sessions", SessionStore(ctx))
+    llm = _FakeLlm()
+    ctx.provide("llm", llm)
+    ctx.provide("config", _FakeConfig([{"id": "demo-a", "url": "u", "reasoning_effort": "medium"}]))
+    session = ctx.sessions.create()
+
+    class _Agent:
+        pass
+
+    agent = _Agent()
+    agent.session = session
+
+    app = TuiApp(ctx, agent)
+    async with app.run_test() as pilot:
+        content = app.query_one("#status-label").content
+        assert session.id in content
+        assert "? tokens" in content

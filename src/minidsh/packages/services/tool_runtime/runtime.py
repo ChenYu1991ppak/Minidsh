@@ -27,6 +27,7 @@ from typing import Any, Awaitable, Callable
 from minidsh.cordis import CapabilityProvider
 from minidsh.packages.core.scope import ScopedLayers
 from .validate import validate_schema, SchemaError
+from .guard import GuardRegistry
 
 __all__ = [
     "ToolDefinition",
@@ -82,10 +83,14 @@ class ToolOutput:
 
     - ``schema``：规范值类型声明 + 运行时校验依据（{type: ...}）。
     - ``render``：``(args, value) -> str`` 把规范值转成给模型的内容。
+    - ``presentation_meta``：（M5 双通道）``(args, value) -> dict | None`` 产出结构化
+      展示元数据（never model-visible），随 tool-result 事件落盘供 UI 复现卡片。
+      可选；缺省 ``None`` 表示该工具不产展示元数据。
     """
 
     schema: dict
     render: Callable[[dict, Any], str]
+    presentation_meta: Callable[[dict, Any], dict | None] | None = None
 
 
 @dataclass(frozen=True)
@@ -105,10 +110,15 @@ class ToolDefinition:
 
 @dataclass(frozen=True)
 class ToolResult:
-    """工具最终结果（对应 ToolExecutionResult）。"""
+    """工具最终结果（对应 ToolExecutionResult）。
+
+    ``meta``：（M5 双通道）结构化展示元数据快照，由 ``output.presentation_meta`` 产出；
+    随 tool-result 事件落盘供 UI 复现卡片，never model-visible。缺省 ``None``。
+    """
 
     content: str
     is_error: bool = False
+    meta: dict | None = None
 
 
 @dataclass
@@ -138,10 +148,15 @@ class PreToolDecision:
 
 @dataclass(frozen=True)
 class PostToolDecision:
-    """调用后决策：accept / block（index.ts:588-597）。"""
+    """调用后决策：accept / block（index.ts:588-597）。
+
+    ``additional_contexts`` 是下游监听器注入的附加上下文（如 repeat-tool-reminder
+    的提醒文本），始终追加不替换；缺省为空 tuple。
+    """
 
     kind: str
     feedback: str | None = None
+    additional_contexts: tuple = ()
 
     @staticmethod
     def accept():
@@ -157,16 +172,12 @@ class ToolLayer:
     """作用域层（index.ts:714）：工具 + 单调守卫 + 展示模式。"""
 
     tools: dict = field(default_factory=dict)
-    guards: list = field(default_factory=list)
+    guards: GuardRegistry = field(default_factory=GuardRegistry)
     modes: dict = field(default_factory=dict)  # name -> "native" | "code" | "both"
 
     def guard_reason(self, exec_: ToolExecution):
         """单调守卫：顺序跑，返回第一个非 None 的拒绝理由（index.ts:1119-1127）。"""
-        for guard in self.guards:
-            reason = guard(exec_)
-            if reason is not None:
-                return reason
-        return None
+        return self.guards.evaluate(exec_)
 
     def isEmpty(self):
         """聚合层判空（ScopedLayers 回收依据）：工具 + 守卫 + 模式全空才算空。"""
@@ -239,15 +250,12 @@ class ToolRuntime(CapabilityProvider):
         return self._layers.effect(scope_ctx, add, label=f"tool:{name}", scope=scopeOf(scope_ctx))
 
     def guard(self, guard_fn, scope_key=None):
-        """注册单调守卫：只能拒绝、不能放行（index.ts:1110）。"""
+        """注册单调守卫：只能拒绝、不能放行（index.ts:1110）。
+
+        底层走 GuardRegistry.register(guard_fn)，返回 disposer。
+        """
         def add(layer: ToolLayer):
-            layer.guards.append(guard_fn)
-
-            def undo():
-                if guard_fn in layer.guards:
-                    layer.guards.remove(guard_fn)
-
-            return undo
+            return layer.guards.register(guard_fn)
 
         return self._layers.effect(self.ctx, add, label="tool-guard", scope=scope_key)
 
@@ -275,15 +283,17 @@ class ToolRuntime(CapabilityProvider):
     def _effective_layer(self, scope_key=None):
         """合成可见层：全局层 + scope 链遮蔽（最近者赢名字）。返回一个只读视图对象。"""
         global_layer = self._layers.global_layer
-        shadow = {}
         tools = dict(global_layer.tools)
         modes = dict(global_layer.modes)
-        guards = list(global_layer.guards)
+        merged_guards = GuardRegistry()
+        for guard in global_layer.guards:
+            merged_guards.register(guard)
         for layer in self._layers.chain_layers(scope_key):
             tools.update(layer.tools)
             modes.update(layer.modes)
-            guards.extend(layer.guards)
-        view = ToolLayer(tools=tools, guards=guards, modes=modes)
+            for guard in layer.guards:
+                merged_guards.register(guard)
+        view = ToolLayer(tools=tools, guards=merged_guards, modes=modes)
         return view
 
     # ---------- 展示面 ----------
@@ -350,6 +360,11 @@ class ToolRuntime(CapabilityProvider):
         decision = await self._post(exec_, result)
         if decision.kind == "block":
             result = ToolResult(content=decision.feedback or "blocked", is_error=True)
+        elif decision.additional_contexts:
+            # [教学简化] 官方把 additionalContexts 前置到下一次请求上下文；此处
+            # 追加到工具结果内容，让提醒文本随 tool-result 回到模型可见面。
+            suffix = "\n\n".join(decision.additional_contexts)
+            result = ToolResult(content=f"{result.content}\n\n{suffix}", is_error=result.is_error)
 
         self.ctx.emit("tools/result", exec_, result)  # 通知观察者（只读，index.ts:1657）
         return result
@@ -391,8 +406,16 @@ class ToolRuntime(CapabilityProvider):
         except SchemaError as exc:
             return ToolResult(content=f"输出校验失败：{exc}", is_error=True)
 
+        # M5 双通道：产展示元数据（可选）；失败不阻断主路径，降级无 meta
+        meta = None
+        if tool.output.presentation_meta is not None:
+            try:
+                meta = tool.output.presentation_meta(exec_.arguments, value)
+            except Exception:
+                meta = None
+
         content = tool.output.render(exec_.arguments, value)
-        return ToolResult(content=str(content))
+        return ToolResult(content=str(content), meta=meta)
 
     async def _post(self, exec_: ToolExecution, result: ToolResult):
         """调用后：post-execute 异步瀑布，兜底 accept（index.ts:1742-1781）。"""
