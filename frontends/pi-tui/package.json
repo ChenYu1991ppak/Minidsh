@@ -1,0 +1,20 @@
+{
+  "name": "minidsh-pi-tui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "pi-tui terminal frontend for mini-dsh (ACP client)",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc && node dist/index.js"
+  },
+  "dependencies": {
+    "@earendil-works/pi-tui": "^0.85.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0"
+  }
+}
