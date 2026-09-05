@@ -93,6 +93,7 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         if t == "tool-result":
             return {"sessionUpdate": TOOL_CALL_UPDATE,
                     "toolCallId": p.get("call_id"),
+                    "isError": bool(p.get("is_error")),
                     "content": [{"type": "content", "content": p.get("result", "")}]}
         return None
 

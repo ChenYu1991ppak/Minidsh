@@ -4,13 +4,15 @@
  * Spawns `minidsh --profile acp` as a subprocess, drives one agent session
  * through the ACP JSON-RPC protocol, and renders the conversation with pi-tui.
  *
+ * Rendering mirrors the official dsh-tui transcript: a single ordered timeline
+ * where tool cards render inline between messages, opportunity dimming, and
+ * Ctrl+O cycling tool-card visibility.
+ *
  * @module minidsh-pi-tui
  */
 import {
-  Container,
   ProcessTerminal,
   TuiMainScreen,
-  Text,
   Spacer,
   Input,
   Key,
@@ -24,13 +26,14 @@ import {
   type TuiMouseEventResult,
 } from "@earendil-works/pi-tui";
 import { AcpClient, type SessionUpdate } from "./acp-client.js";
-import { SessionState } from "./session-state.js";
+import { SessionState, type TranscriptItem } from "./session-state.js";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const PROMPT = "> ";
-const MAX_TOOL_RESULT_CHARS = 500;
-const THINKING_MAX_CHARS = 300;
+const MAX_TOOL_RESULT_CHARS = 400;   // 卡片折叠时仅预览前 N 行
+const THINKING_MAX_CHARS = 200;       // 思考默认折叠为少量字符
+const TOOL_PREVIEW_LINES = 6;
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -42,19 +45,36 @@ const acp = new AcpClient();
 function dim(text: string): string {
   return `\x1b[2m${text}\x1b[0m`;
 }
-
 function bold(text: string): string {
   return `\x1b[1m${text}\x1b[0m`;
+}
+function accent(text: string): string {
+  return `\x1b[95m${text}\x1b[0m`;  // 官方 accent 色（ANSI 95）
+}
+function success(text: string): string {
+  return `\x1b[32m${text}\x1b[0m`;
+}
+function warning(text: string): string {
+  return `\x1b[33m${text}\x1b[0m`;
+}
+function error(text: string): string {
+  return `\x1b[31m${text}\x1b[0m`;
 }
 
 function wrapLines(text: string, width: number): string[] {
   if (width <= 0) return text.split("\n");
-  // wrapTextWithAnsi 是 pi-tui 官方换行工具：按可见宽度换行，保留 ANSI 码
   const lines: string[] = [];
   for (const line of text.split("\n")) {
     lines.push(...wrapTextWithAnsi(line, width));
   }
   return lines;
+}
+
+/** 截取一段文本的前 N 行，折叠时预览用。 */
+function previewLines(text: string, maxLines: number, width: number): { lines: string[]; hidden: number } {
+  const all = wrapLines(text, width);
+  if (all.length <= maxLines) return { lines: all, hidden: 0 };
+  return { lines: all.slice(0, maxLines), hidden: all.length - maxLines };
 }
 
 // ── Components ─────────────────────────────────────────────────────────────
@@ -69,41 +89,53 @@ function statusBar(width: number): string[] {
   return [truncateToWidth(line, width)];
 }
 
-/** Transcript: accumulated entries with tool calls. */
+/** 渲染一条 timeline item 的回车行。 */
+function renderItem(item: TranscriptItem, width: number): string[] {
+  switch (item.type) {
+    case "thought": {
+      const trimmed = item.text.length > THINKING_MAX_CHARS
+        ? item.text.slice(0, THINKING_MAX_CHARS) + "…"
+        : item.text;
+      return wrapLines(dim(trimmed), width);
+    }
+    case "user":
+      return [bold(accent("## You")), ...wrapLines(item.text, width)];
+    case "assistant":
+      return [bold(accent("## Assistant")), ...wrapLines(item.text, width)];
+    case "tool": {
+      const isDone = item.status === "done";
+      const glyph = item.status === "in_progress" ? "○" : isDone ? "●" : "●";
+      const statusColor = item.status === "in_progress" ? warning : isDone ? success : error;
+      const header = truncateToWidth(`${glyph} Tool / ${item.name}`, Math.max(1, width - 2));
+      if (item.visibility === "hidden") return [];
+      const lines = [statusColor(header)];
+      if (item.resultText) {
+        if (item.status === "in_progress") return lines;  // pending：仅 header
+        if (item.visibility === "collapsed") {
+          const { lines: preview, hidden } = previewLines(item.resultText, TOOL_PREVIEW_LINES, width - 2);
+          lines.push(...preview.map(l => `  ${dim(l)}`));
+          if (hidden > 0) lines.push(dim(`  … +${hidden} lines (Ctrl+O to expand)`));
+        } else {
+          lines.push(...wrapLines(item.resultText, width - 2).map(l => `  ${dim(l)}`));
+        }
+      }
+      return lines;
+    }
+  }
+}
+
+/** Transcript: single ordered timeline. */
 function transcript(width: number): string[] {
-  const lines: string[] = [];
   if (width <= 0) width = 80;
-  for (const entry of state.entries) {
-    if (entry.kind === "thought" && entry.text) {
-      const trimmed = entry.text.length > THINKING_MAX_CHARS
-        ? entry.text.slice(0, THINKING_MAX_CHARS) + "…"
-        : entry.text;
-      // 先按可见宽度 wrap，再整体加 dim（避免超宽行压垮渲染引擎）
-      for (const l of wrapLines(trimmed, width)) {
-        lines.push(dim(l));
-      }
-    } else if (entry.role === "user") {
-      lines.push(truncateToWidth(bold("## You"), width));
-      lines.push(...wrapLines(entry.text, width));
-    } else if (entry.role === "assistant" && entry.text) {
-      lines.push(truncateToWidth(bold("## Assistant"), width));
-      lines.push(...wrapLines(entry.text, width));
-    }
+  const lines: string[] = [];
+  for (const item of state.items) {
+    lines.push(...renderItem(item, width));
+    lines.push("");  // 每个 item 后空一行（同官方 Spacer 段落间隔）
   }
-  // Tool calls
-  for (const tc of state.toolCalls.values()) {
-    const icon = tc.status === "in_progress" ? "⏳" : "✓";
-    lines.push(truncateToWidth(dim(`${icon} ${tc.name}`), width));
-    if (tc.resultText) {
-      const truncated = tc.resultText.length > MAX_TOOL_RESULT_CHARS
-        ? tc.resultText.slice(0, MAX_TOOL_RESULT_CHARS) + "\n…(truncated)"
-        : tc.resultText;
-      for (const l of truncated.split("\n")) {
-        lines.push(...wrapLines(`  ${l}`, width));
-      }
-    }
+  if (lines.length === 0) {
+    lines.push(truncateToWidth("Welcome to mini-dsh. Type a message to start.", width));
   }
-  return lines.length > 0 ? lines : [truncateToWidth("Welcome to mini-dsh. Type a message to start.", width)];
+  return lines;
 }
 
 /** Input area: editable field with prompt. */
@@ -153,19 +185,16 @@ class InputArea implements Component, Focusable {
 // ── Main ───────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  // Parse CLI args
   const args = process.argv.slice(2);
   const cwd = args.find(a => !a.startsWith("-")) ?? process.cwd();
   const extraArgs = args.filter(a => a.startsWith("-"));
 
-  // Start ACP client
   acp.on("exit", (code) => {
     process.exit(code as number);
   });
 
   await acp.start({ cwd, extraArgs });
 
-  // Initialize + create session
   const init = await acp.initialize();
   console.error(`[pi-tui] ACP v${init.protocolVersion} ready`);
 
@@ -173,18 +202,15 @@ async function main(): Promise<void> {
   state.reset(sessionId);
   console.error(`[pi-tui] session ${sessionId}`);
 
-  // ── Build TUI ──
-
   const terminal = new ProcessTerminal();
   const tui = new TuiMainScreen(terminal);
   const inputArea = new InputArea();
 
-  // Subscribe to updates (needs tui reference for re-render)
   acp.onUpdate((update: SessionUpdate) => {
     if (update.sessionId !== state.sessionId) return;
     switch (update.sessionUpdate) {
       case "agent_message_chunk":
-        state.addMessage(update.content?.text ?? "");
+        state.addAssistantMessage(update.content?.text ?? "");
         break;
       case "agent_thought_chunk":
         state.addThought(update.content?.text ?? "");
@@ -195,9 +221,9 @@ async function main(): Promise<void> {
         }
         break;
       case "tool_call_update": {
-        const content = (update as { content?: Array<{ content?: string }> }).content;
+        const content = (update as { content?: Array<{ content?: string }>; isError?: boolean }).content;
         if (update.toolCallId && content?.[0]?.content) {
-          state.setToolResult(update.toolCallId, content[0].content);
+          state.setToolResult(update.toolCallId, content[0].content, (update as { isError?: boolean }).isError ?? false);
         }
         break;
       }
@@ -220,14 +246,19 @@ async function main(): Promise<void> {
 
   tui.setFocus(inputArea);
 
-  // ── Input handling ──
-
   tui.addInputListener((data: string): TuiInputListenerResult => {
-    // 全局热键（Ctrl+C 取消），不消费——让 focused component（Input）正常接收输入。
-    // pi-tui 的 handleTerminalInput 先跑 inputListeners 再跑 focusedComponent.handleInput，
-    // 所以这里只做快捷键拦截，不重复转发给 Input（否则 Input 收到两次输入）。
+    // Ctrl+C 取消当前 turn
     if (matchesKey(data, Key.ctrl("c"))) {
       acp.sessionCancel(state.sessionId!);
+      return { consume: true };
+    }
+    // Ctrl+O 循环工具卡片可见性（hidden → collapsed → expanded）
+    if (matchesKey(data, Key.ctrl("o"))) {
+      const lastTool = [...state.items].reverse().find(i => i.type === "tool");
+      if (lastTool && lastTool.type === "tool") {
+        state.cycleToolVisibility(lastTool.callId);
+        tui.requestRender();
+      }
       return { consume: true };
     }
     return undefined;
