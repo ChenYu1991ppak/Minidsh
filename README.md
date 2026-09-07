@@ -46,7 +46,7 @@ minidsh --profile tui [./project]          # pi-tui 前端（需 API key）
 minidsh --profile tui-textual [./project]  # Textual TUI（中文终端/教学参考）
 ```
 
-> 免 API key 测试：`MINIDSH_ACP_PROFILE=acp-fake minidsh --profile tui`
+> 免 API key 运行：`MINIDSH_ACP_PROFILE=acp-fake minidsh --profile tui`
 
 ### 自定义 profile
 
