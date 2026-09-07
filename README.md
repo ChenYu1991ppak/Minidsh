@@ -23,7 +23,7 @@ mini-dsh 忠实复刻了这一架构：
 1. **配合教学，逐机制对齐**：配套教学仓库 [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy)，本实现完全根据教学内容从 0 构建，每个能力/机制都能与官方 `packages/*/src` 对上号。
 2. **Python 开发者自建 agent harness 的起点**：不同分支对应不同构建阶段，可直接作为模板分叉出你自己的 agent harness。
 
-构建原则见 [doc/PRINCIPLES.md](doc/PRINCIPLES.md)。
+构建原则见 [docs/PRINCIPLES.md](docs/PRINCIPLES.md)。
 
 ## 当前特性
 
@@ -37,7 +37,7 @@ mini-dsh 忠实复刻了这一架构：
 - **前端**：pi-tui 终端 + Textual TUI + ACP JSON-RPC server，经 `--profile` 切换
 - **装配**：bundle/profile 覆盖链 + `minidsh plugin` 管理
 
-完整列表见 [doc/FEATURE.md](doc/FEATURE.md)。
+完整列表见 [docs/FEATURE.md](docs/FEATURE.md)。
 
 ## 运行
 
@@ -50,7 +50,7 @@ pip install -e . --no-build-isolation
 
 # 配置模型（必须）
 mkdir -p ~/.minidsh
-# models.json 内嵌 apiKey，见 doc/PRINCIPLES.md §8
+# models.json 内嵌 apiKey，见 docs/PRINCIPLES.md §8
 ```
 
 ### 启动 TUI
@@ -61,7 +61,7 @@ minidsh --profile tui [./project]          # pi-tui 前端（需 API key）
 
 ### 自定义 profile
 
-`--profile <name>` 启动自定义 profile 或内置 bundle。详细编写方法见 [doc/PRINCIPLES.md §7](doc/PRINCIPLES.md#7-bundle--profile-规约)。
+`--profile <name>` 启动自定义 profile 或内置 bundle。详细编写方法见 [docs/PRINCIPLES.md §7](docs/PRINCIPLES.md#7-bundle--profile-规约)。
 
 ```yaml
 # ~/.minidsh/profiles/my.yaml
