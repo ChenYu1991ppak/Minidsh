@@ -25,6 +25,20 @@ mini-dsh 忠实复刻了这一架构：
 
 构建原则见 [doc/PRINCIPLES.md](doc/PRINCIPLES.md)。
 
+## 当前特性
+
+- **内核**：Cordis 插件容器（Context/Fiber/Service/事件/四形态归一）
+- **会话面**：append-only 事件日志 + 恢复（resume）+ 投影（projection）+ JSONL/SQLite 持久化
+- **agent-loop**：react 循环（流式 LLM → 工具 → 回填 → 收尾）+ turn 边界事件
+- **LLM**：OpenAI 兼容流式 + 思考五档 + 软映射层（四家模型收敛）+ 真实 token 用量（provider 回传）
+- **工具**：注册表 + 三段守卫管线 + bash/read_file + 审批（ask/never + 应答者）+ 技能加载 + 子代理委派
+- **检索**：Web search/fetch（SSRF 防护 + HTML→text）+ LSP 四操作
+- **压缩**：上下文压缩（阈值触发，prune/summarize）
+- **前端**：pi-tui 终端 + Textual TUI + ACP JSON-RPC server，经 `--profile` 切换
+- **装配**：bundle/profile 覆盖链 + `minidsh plugin` 管理
+
+完整列表见 [doc/FEATURE.md](doc/FEATURE.md)。
+
 ## 运行
 
 ### 安装
@@ -43,10 +57,7 @@ mkdir -p ~/.minidsh
 
 ```bash
 minidsh --profile tui [./project]          # pi-tui 前端（需 API key）
-minidsh --profile tui-textual [./project]  # Textual TUI（中文终端/教学参考）
 ```
-
-> 免 API key 运行：`MINIDSH_ACP_PROFILE=acp-fake minidsh --profile tui`
 
 ### 自定义 profile
 
