@@ -2,6 +2,22 @@
 
 **最小化 DeepSeek Harness（dsh）**：用 Python 从零构建的 dsh 工程骨架。
 
+## 项目描述
+
+mini-dsh 是官方 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness)（dsh）的 Python 教学复刻。官方 dsh 是一个 TypeScript 编写的通用 AI agent 框架：以 Cordis 插件容器为内核，把 agent 的所有能力——会话、模型调用、工具执行、技能、子代理、上下文压缩、token 计量、审批、Web 检索——都实现为**可插拔的插件**，通过 bundle/profile 声明式装配。
+
+mini-dsh 忠实复刻了这一架构：
+
+- **内核**：自研 `cordis/` 插件容器（Context/Fiber/Service/事件派发/四形态归一），约 400 行同步单线程内核，等价官方 `@deepseek-ai/cordis`
+- **能力三角色**：每个能力拆成「定义（纯契约）/ 提供方（构造即注册）/ 消费方（写工具注册表）」三层，seam 可替换
+- **会话事件流**：append-only 事件日志（20+ 类型白名单），所有可观测行为都落成事件，TUI/持久化/压缩/token 计量都是只读观察者
+- **agent-loop**：react 循环驱动器，流式 LLM → 工具调用 → 结果回填 → 再思考，直到文本收尾
+- **LLM 软映射层**：四家模型（DeepSeek/Kimi/Qwen/GPT）的思考强度、温度、推理回传差异收敛在纯函数层
+- **三种前端门面**：pi-tui 终端（对齐官方 dsh-tui）、Textual TUI（Python 进程内）、ACP JSON-RPC server（供外部程序），经 `--profile` 一键切换
+- **真实 token 计量**：provider 回传的 usage（非估算）经 tokenMeter 锚点流转到前端显示
+
+相比官方（TypeScript + 40+ 包），mini-dsh 做了**最小化裁剪**：单仓库单包、同步内核、教学版事件面，但保留全部核心机制形态。所有偏离处标 `[教学简化]`，所有对齐处标 `↔ 官方源码位置`。
+
 ## 存在的意义
 
 1. **配合教学，逐机制对齐**：配套教学仓库 [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy)，本实现完全根据教学内容从 0 构建，每个能力/机制都能与官方 `packages/*/src` 对上号。
