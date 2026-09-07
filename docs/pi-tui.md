@@ -1,92 +1,94 @@
-# pi-tui 生态选型
+# pi-tui Ecosystem Choice
 
-## 为什么选择 pi-tui
+English | [中文](pi-tui_zh.md)
 
-mini-dsh 有两条 TUI 前端线：
+## Why pi-tui
 
-| 前端 | 技术栈 | 形态 | 适用场景 |
+mini-dsh has two TUI frontend lines:
+
+| Frontend | Tech stack | Form | Use case |
 |---|---|---|---|
-| `tui-textual` | Python + Textual | 进程内 cordis 插件 | 中文终端、教学参考、单 Python 进程部署 |
-| `pi-tui` | TypeScript + `@earendil-works/pi-tui` | 独立 Node.js 进程, ACP 协议 | 对齐官方 dsh-tui 生态、软件开发终端 |
+| `tui-textual` | Python + Textual | In-process cordis plugin | Chinese terminal, teaching reference, single-Python-process deployment |
+| `pi-tui` | TypeScript + `@earendil-works/pi-tui` | Standalone Node.js process, ACP protocol | Aligned with the official dsh-tui ecosystem, software-development terminal |
 
-## 决策依据
+## Decision Rationale
 
-1. **官方选型**：`@deepseek-ai/dsh-tui`（1993 行 index.ts）以 `@earendil-works/pi-tui` 为核心渲染库，
-   作者 mitsuhiko/badlogic 是终端工具领域资深开发者（pygments/insta/pixi 等）。该库是官方的
-   「terminals-as-first-class」实现路径。
+1. **Official choice**: `@deepseek-ai/dsh-tui` (1993-line index.ts) uses `@earendil-works/pi-tui` as its core rendering library,
+   authored by mitsuhiko/badlogic, veterans in the terminal-tooling space (pygments / insta / pixi, etc.). It is the official
+   "terminals-as-first-class" implementation path.
 
-2. **差分渲染**：pi-tui 的 `TuiMainScreen` 只更新变化的行（differential rendering），
-   天然不卡在 79KB 大文本上——与 Textual 的全文 Rich Text 排版形成互补。
+2. **Differential rendering**: pi-tui's `TuiMainScreen` updates only the changed lines (differential rendering),
+   naturally immune to freezing on 79KB text — complementing Textual's full-text Rich Text layout.
 
-3. **进程隔离**：pi-tui 前端经 ACP stdio 协议与 Python 后端通信，互不阻塞。
-   Python 端跑 agent/session/tools，Node 端只管终端渲染+输入，职责清晰。
+3. **Process isolation**: the pi-tui frontend communicates with the Python backend over the ACP stdio protocol, mutually
+   non-blocking. Python runs agent/session/tools; Node only handles terminal rendering + input — clear responsibilities.
 
-4. **生态对齐**：`@narumitw/pi-tui-kit`（Declarative UI flows）等第三方扩展
-   已形成 pi-tui 组件生态；后续可复用现有扩展而非写新组件。
+4. **Ecosystem alignment**: third-party extensions such as `@narumitw/pi-tui-kit` (declarative UI flows)
+   have already formed a pi-tui component ecosystem; existing extensions can be reused rather than writing new components.
 
-## 架构
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ 终端（用户）                                          │
+│ Terminal (user)                                     │
 ├─────────────────────────────────────────────────────┤
-│ pi-tui 前端 (Node.js)                                │
+│ pi-tui frontend (Node.js)                           │
 │  ├─ acp-client.ts  ── spawn minidsh --profile acp   │
-│  ├─ session-state.ts ── 本地会话投影                  │
-│  └─ index.ts         ── pi-tui 组件树                │
+│  ├─ session-state.ts ── local session projection    │
+│  └─ index.ts         ── pi-tui component tree       │
 ├─────────────────────────────────────────────────────┤
-│ ACP JSON-RPC stdio (ndjson, 每行一个 JSON 对象)       │
+│ ACP JSON-RPC stdio (ndjson, one JSON object per line)│
 ├─────────────────────────────────────────────────────┤
-│ mini-dsh Python 后端                                  │
-│  ├─ acp-server  ── 接收 JSON-RPC, 驱动 agent loop    │
-│  ├─ agent-loop  ── ReactLoopAgent                    │
-│  └─ session/llm/tools ── 内核能力                     │
+│ mini-dsh Python backend                             │
+│  ├─ acp-server  ── receives JSON-RPC, drives agent loop │
+│  ├─ agent-loop  ── ReactLoopAgent                   │
+│  └─ session/llm/tools ── core capabilities          │
 └─────────────────────────────────────────────────────┘
 ```
 
-## 运行
+## Running
 
 ```bash
-# 1. 安装前端依赖
+# 1. Install frontend dependencies
 cd frontends/pi-tui && npm install && npm run build
 
-# 2. 启动（需 Python 后端已安装 minidsh）
+# 2. Start (requires the minidsh Python backend installed)
 cd /path/to/project && npx tsx /path/to/frontends/pi-tui/src/index.ts
 
-# 2b. 或经 launcher（后续）
-minidsh --profile tui   # 自动 spawn pi-tui 前端
+# 2b. Or via the launcher (forthcoming)
+minidsh --profile tui   # auto-spawns the pi-tui frontend
 ```
 
-## 测试
+## Testing
 
-pi-tui 前端目前无自动测试（需真实 TTY 环境）。Python 侧 ACP 协议已覆盖 18 个测试
-（`tests/tools/test_acp.py`），`minidsh --profile acp-fake` 提供免 API key 的 ACP 服务端。
+The pi-tui frontend has no automated tests yet (requires a real TTY environment). The Python-side ACP protocol
+is covered by 18 tests (`tests/tools/test_acp.py`); `minidsh --profile acp-fake` provides an API-key-free ACP server.
 
-## 参考
+## References
 
-- [@earendil-works/pi-tui@0.85.0](https://www.npmjs.com/package/@earendil-works/pi-tui) — npm 包
-- [pi-tui README](https://github.com/earendil-works/pi) — 源码仓库
-- [Toad](https://batrachian.ai) — pi-tui 生态的思考型 AI 编码终端
-- 官方 dsh-tui（已删除, commit `10bb9cbf4a`）— 1993 行 index.ts, 833 行 transcript.ts, 328 行 theme.ts
+- [@earendil-works/pi-tui@0.85.0](https://www.npmjs.com/package/@earendil-works/pi-tui) — npm package
+- [pi-tui README](https://github.com/earendil-works/pi) — source repository
+- [Toad](https://batrachian.ai) — a reasoning-focused AI coding terminal in the pi-tui ecosystem
+- Official dsh-tui (removed, commit `10bb9cbf4a`) — 1993-line index.ts, 833-line transcript.ts, 328-line theme.ts
 
-## 与官方 dsh-tui 的渲染对比
+## Rendering Comparison vs. Official dsh-tui
 
-| 维度 | 官方 dsh-tui（已删） | mini-dsh pi-tui 前端 |
+| Dimension | Official dsh-tui (removed) | mini-dsh pi-tui frontend |
 |---|---|---|
-| 转录模型 | 单条有序 timeline（append-origin） | ✅ 同样的单条有序 `items`，工具卡片在消息之间内联渲染 |
-| 工具卡片 | `ToolCardComponent` 三段折叠（hidden/collapsed/expanded） | ✅ 同样的三段折叠（Ctrl+O 循环） |
-| 折叠预览 | `preview(body, maxOutputLines)` 前 N 行 + `… +N lines` 提示 | ✅ 前 6 行预览 + `… +N lines (Ctrl+O to expand)` |
-| 卡片头 | `○/● Tool / <name>` 环标记 + 状态色 | ✅ `○/● Tool / <name>` + warning/success/error 状态色 |
-| 输出上限 | `maxToolOutputLines`（可配置） | ✅ `TOOL_PREVIEW_LINES = 6`（编译期常量） |
-| 思考渲染 | 可选显示 + italic dim | ⚠ 折叠为 200 字符 + dim（无展开/收起热键） |
-| 状态色 | palette：dim/accent/success/warning/error/code | ⚠ 前五色 + ANSI 转义，无独立 Palette 类型/6 色 code 区分 |
-| token 用量 | `tokenMeter` 实时底部栏 | ⚠ `usage` 字段有，但 ACP 未映射 `usage_update`，缺顶部栏动态刷新 |
-| diff 卡片 | `renderDiff` 增删行着色 | ❌ 未实现（无 `diff` 工具的 presentation） |
-| Markdown 渲染 | `Markdown` 组件（代码高亮/表格/链接） | ⚠ 纯文本 wrap（无代码块着色） |
+| Transcript model | Single ordered timeline (append-origin) | ✅ Same single ordered `items`, tool cards render inline between messages |
+| Tool card | `ToolCardComponent` three-stage fold (hidden/collapsed/expanded) | ✅ Same three-stage fold (Ctrl+O cycle) |
+| Fold preview | `preview(body, maxOutputLines)` first N lines + `… +N lines` hint | ✅ First 6 lines preview + `… +N lines (Ctrl+O to expand)` |
+| Card header | `○/● Tool / <name>` ring marker + status color | ✅ `○/● Tool / <name>` + warning/success/error status colors |
+| Output cap | `maxToolOutputLines` (configurable) | ✅ `TOOL_PREVIEW_LINES = 6` (compile-time constant) |
+| Reasoning render | Optional display + italic dim | ⚠ Folded to 200 chars + dim (no expand/collapse hotkey) |
+| Status colors | palette: dim/accent/success/warning/error/code | ⚠ First five + ANSI escapes, no standalone Palette type / 6-color code distinction |
+| Token usage | `tokenMeter` live footer bar | ⚠ `usage` field exists, but ACP doesn't map `usage_update`; no live footer refresh |
+| Diff card | `renderDiff` add/remove line coloring | ❌ Not implemented (no `diff` tool presentation) |
+| Markdown render | `Markdown` component (code highlight/tables/links) | ⚠ Plain-text wrap (no code-block coloring) |
 
-## 已知差距（按优先级）
+## Known Gaps (by priority)
 
-1. **token 用量不刷新**：ACP server 未把 `tokenMeter.measure()` 映射为 `usage_update`，前端顶部栏 `usage` 恒空。
-2. **Markdown 无着色**：assistant 回复是纯文本，代码块/表格/链接未用 `Markdown` 组件渲染。
-3. **工具输出截断值硬编码**：`TOOL_PREVIEW_LINES`/`MAX_TOOL_RESULT_CHARS` 应走配置。
-4. **trailing output 拖动选择**：官方 body 行无前缀（拖选只复制工具原文），本版有 2 空格缩进。
+1. **Token usage doesn't refresh**: the ACP server doesn't map `tokenMeter.measure()` to `usage_update`; the frontend footer `usage` stays empty.
+2. **Markdown isn't colored**: assistant replies are plain text; code blocks/tables/links aren't rendered with the `Markdown` component.
+3. **Tool-output truncation is hardcoded**: `TOOL_PREVIEW_LINES`/`MAX_TOOL_RESULT_CHARS` should come from config.
+4. **Trailing output drag-select**: official body lines have no prefix (drag-select copies only tool text); this version has a 2-space indent.
