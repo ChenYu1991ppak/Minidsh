@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ...infrastructure.bundle import (
+from minidsh.infrastructure.bundle import (
     PluginRef,
     merge_plugins,
     apply_removes,
@@ -26,7 +26,7 @@ DEFAULT_BUNDLES = [BUILTIN_BUNDLE_NAME]
 
 
 def profile_path(name: str, home: str | Path | None = None) -> Path:
-    from ...infrastructure.config.files import user_config_dir
+    from minidsh.infrastructure.config.files import user_config_dir
 
     base = Path(home) if home else user_config_dir()
     return base / "profiles" / f"{name}.yaml"
@@ -82,7 +82,7 @@ def resolve_profile(
     - remove 全局删。
     - ``extra_bundles``：额外 bundle 名，追加到 base 之后（如 ``tui-textual`` 前端 bundle）。
     """
-    from ...infrastructure.config.files import user_config_dir
+    from minidsh.infrastructure.config.files import user_config_dir
 
     layers: list[dict] = []
     # 命名 profile

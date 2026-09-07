@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from ...cordis import Context
+from minidsh.cordis import Context
 from .bundle import PluginRef
 
 __all__ = ["build_context"]

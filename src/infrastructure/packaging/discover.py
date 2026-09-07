@@ -16,7 +16,7 @@ import importlib
 import importlib.metadata as _metadata
 from typing import Any, Callable
 
-from ...cordis import normalize_plugin
+from minidsh.cordis import normalize_plugin
 
 __all__ = ["discover_plugins", "entry_point_resolver"]
 

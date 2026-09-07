@@ -289,7 +289,7 @@ class TuiApp(App):
         self._refresh_status()
 
     async def _switch_effort(self, level: str) -> None:
-        from minidsh.infrastructure.config import REASONING_EFFORTS
+        from infrastructure.config import REASONING_EFFORTS
 
         if level not in REASONING_EFFORTS:
             self._transcript.update(f"[bold red]非法档位：{level}[/bold red]（{sorted(REASONING_EFFORTS)}）")

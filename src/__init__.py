@@ -8,8 +8,6 @@
 """
 from __future__ import annotations
 
-# 版本号是「单一真相源」：pyproject.toml 通过 ``[tool.hatch.version] path`` 读它，
-# 无需在两处手动同步（见 pyproject.toml）。升级版本只改这里。
 __version__ = "0.1.0"
 
 __all__ = ["__version__"]

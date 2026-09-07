@@ -21,7 +21,7 @@ from pathlib import Path
 
 from .loader import load_project
 from .app_plugin import find_app_plugin
-from ...packages.services.session.reporting import replay_session, load_session_events
+from minidsh.packages.services.session.reporting import replay_session, load_session_events
 
 __all__ = ["main"]
 

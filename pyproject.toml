@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "minidsh"
 dynamic = ["version"]
-description = "最小化 DeepSeek Harness（dsh）：cordis 内核 + agent-loop + tools/skills/subagent/compaction，全程可观测"
+description = "test"
 requires-python = ">=3.11"
 dependencies = ["openai>=1.0", "pyyaml>=6.0", "textual>=0.80", "httpx>=0.27"]
 
@@ -15,7 +15,6 @@ test = ["pytest>=7", "pytest-asyncio", "pytest-cov"]
 [project.scripts]
 minidsh = "minidsh.infrastructure.boot.cli:main"
 
-# 内置 base 插件 + 未来第三方插件共用的发现组：条目名 = 插件名，值 = 可 import 模块
 [project.entry-points."minidsh.plugins"]
 "minidsh.config" = "minidsh.infrastructure.config.providers.config"
 "minidsh.root" = "minidsh.packages.services.workspace.providers.root"
@@ -57,8 +56,68 @@ minidsh = "minidsh.infrastructure.boot.cli:main"
 [tool.setuptools.dynamic]
 version = {attr = "minidsh.__version__"}
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools.package-dir]
+"minidsh" = "src"
+"minidsh.bundles" = "src/bundles"
+"minidsh.cordis" = "src/cordis"
+"minidsh.infrastructure" = "src/infrastructure"
+"minidsh.infrastructure.boot" = "src/infrastructure/boot"
+"minidsh.infrastructure.bundle" = "src/infrastructure/bundle"
+"minidsh.infrastructure.config" = "src/infrastructure/config"
+"minidsh.infrastructure.config.providers" = "src/infrastructure/config/providers"
+"minidsh.infrastructure.packaging" = "src/infrastructure/packaging"
+"minidsh.infrastructure.profile" = "src/infrastructure/profile"
+"minidsh.infrastructure.tui" = "src/infrastructure/tui"
+"minidsh.packages" = "src/packages"
+"minidsh.packages.core" = "src/packages/core"
+"minidsh.packages.core.scope" = "src/packages/core/scope"
+"minidsh.packages.services" = "src/packages/services"
+"minidsh.packages.services.acp" = "src/packages/services/acp"
+"minidsh.packages.services.acp.providers" = "src/packages/services/acp/providers"
+"minidsh.packages.services.agents" = "src/packages/services/agents"
+"minidsh.packages.services.agents.providers" = "src/packages/services/agents/providers"
+"minidsh.packages.services.approval" = "src/packages/services/approval"
+"minidsh.packages.services.compaction" = "src/packages/services/compaction"
+"minidsh.packages.services.compaction.providers" = "src/packages/services/compaction/providers"
+"minidsh.packages.services.fs" = "src/packages/services/fs"
+"minidsh.packages.services.fs.providers" = "src/packages/services/fs/providers"
+"minidsh.packages.services.llm" = "src/packages/services/llm"
+"minidsh.packages.services.llm.providers" = "src/packages/services/llm/providers"
+"minidsh.packages.services.loop" = "src/packages/services/loop"
+"minidsh.packages.services.loop.providers" = "src/packages/services/loop/providers"
+"minidsh.packages.services.lsp" = "src/packages/services/lsp"
+"minidsh.packages.services.lsp.providers" = "src/packages/services/lsp/providers"
+"minidsh.packages.services.persistence" = "src/packages/services/persistence"
+"minidsh.packages.services.persistence.providers" = "src/packages/services/persistence/providers"
+"minidsh.packages.services.prompt" = "src/packages/services/prompt"
+"minidsh.packages.services.prompt.providers" = "src/packages/services/prompt/providers"
+"minidsh.packages.services.rpc" = "src/packages/services/rpc"
+"minidsh.packages.services.sandbox" = "src/packages/services/sandbox"
+"minidsh.packages.services.sandbox.providers" = "src/packages/services/sandbox/providers"
+"minidsh.packages.services.session" = "src/packages/services/session"
+"minidsh.packages.services.session.providers" = "src/packages/services/session/providers"
+"minidsh.packages.services.session.reporting" = "src/packages/services/session/reporting"
+"minidsh.packages.services.session_projection" = "src/packages/services/session_projection"
+"minidsh.packages.services.session_projection.providers" = "src/packages/services/session_projection/providers"
+"minidsh.packages.services.settings" = "src/packages/services/settings"
+"minidsh.packages.services.settings.providers" = "src/packages/services/settings/providers"
+"minidsh.packages.services.shell" = "src/packages/services/shell"
+"minidsh.packages.services.shell.providers" = "src/packages/services/shell/providers"
+"minidsh.packages.services.skills" = "src/packages/services/skills"
+"minidsh.packages.services.skills.providers" = "src/packages/services/skills/providers"
+"minidsh.packages.services.subagent" = "src/packages/services/subagent"
+"minidsh.packages.services.subagent.providers" = "src/packages/services/subagent/providers"
+"minidsh.packages.services.subprocess" = "src/packages/services/subprocess"
+"minidsh.packages.services.subprocess.providers" = "src/packages/services/subprocess/providers"
+"minidsh.packages.services.token_meter" = "src/packages/services/token_meter"
+"minidsh.packages.services.token_meter.providers" = "src/packages/services/token_meter/providers"
+"minidsh.packages.services.tool_runtime" = "src/packages/services/tool_runtime"
+"minidsh.packages.services.tool_runtime.providers" = "src/packages/services/tool_runtime/providers"
+"minidsh.packages.services.web" = "src/packages/services/web"
+"minidsh.packages.services.web.providers" = "src/packages/services/web/providers"
+"minidsh.packages.services.workspace" = "src/packages/services/workspace"
+"minidsh.packages.services.workspace.providers" = "src/packages/services/workspace/providers"
+"minidsh.packages.tools" = "src/packages/tools"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
