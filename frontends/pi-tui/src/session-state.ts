@@ -30,8 +30,8 @@ export class SessionState {
   effort = "?";
   /** Single ordered timeline: thoughts, messages, and tool cards interleaved by arrival. */
   items: TranscriptItem[] = [];
-  /** Latest usage update (token budget percent). */
-  usage: { totalTokens?: number; contextWindow?: number } | null = null;
+  /** 实际 token 用量（provider 回传，非估算）：已用 + 上下文窗口。 */
+  usage: { used?: number; size?: number } | null = null;
 
   reset(sessionId: string): void {
     this.sessionId = sessionId;

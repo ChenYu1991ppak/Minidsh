@@ -74,6 +74,8 @@ class OpenAILlm(LlmRuntime, CapabilityProvider):
         kwargs: dict[str, Any] = {
             "model": self.model,
             "stream": True,
+            # 流式返回 usage：最后一个 chunk 携带真实 token 计数（非估算）
+            "stream_options": {"include_usage": True},
         }
         # temperature：reasoning 模型剥离，否则透传
         if self.temperature is not None and not softmap.strip_tuning(self.model):
@@ -109,8 +111,17 @@ class OpenAILlm(LlmRuntime, CapabilityProvider):
 
         # 工具调用按 index 聚合（流式里 name/arguments 会分片到达）
         tool_calls: dict[int, dict[str, Any]] = {}
+        # 真实 token 用量：include_usage 时最后一个 chunk 的 usage 字段
+        usage: dict[str, Any] | None = None
 
         async for chunk in stream:
+            chunk_usage = getattr(chunk, "usage", None)
+            if chunk_usage is not None:
+                usage = {
+                    "prompt_tokens": getattr(chunk_usage, "prompt_tokens", 0) or 0,
+                    "completion_tokens": getattr(chunk_usage, "completion_tokens", 0) or 0,
+                    "total_tokens": getattr(chunk_usage, "total_tokens", 0) or 0,
+                }
             if not chunk.choices:
                 continue
             delta = chunk.choices[0].delta
@@ -146,9 +157,9 @@ class OpenAILlm(LlmRuntime, CapabilityProvider):
                     name=call["name"],
                     arguments=call["arguments"] or "{}",
                 )
-            yield Chunk(kind="finish", stop_reason="tool-use")
+            yield Chunk(kind="finish", stop_reason="tool-use", usage=usage)
         else:
-            yield Chunk(kind="finish", stop_reason="end-turn")
+            yield Chunk(kind="finish", stop_reason="end-turn", usage=usage)
 
 
 def apply(ctx):

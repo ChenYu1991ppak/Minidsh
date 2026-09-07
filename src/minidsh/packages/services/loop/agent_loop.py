@@ -204,6 +204,7 @@ class ReactLoopAgent:
             reasoning_parts: list[str] = []
             chunk_seqs: list[int] = []
             stop_reason: str | None = None
+            finish_usage: dict | None = None
 
             async for chunk in self.ctx.llm.stream(
                 self.messages, system_prompt=system_text, tools=tools
@@ -219,6 +220,7 @@ class ReactLoopAgent:
                     tool_calls.append(chunk)
                 elif chunk.kind == "finish":
                     stop_reason = chunk.stop_reason
+                    finish_usage = chunk.usage
 
             # 工具调用轮：assistant 消息按需带 reasoning_content 回传（软映射层判
             # requires_reasoning_history → 保留；否则 strip）。见 _execute_tools。
@@ -235,6 +237,15 @@ class ReactLoopAgent:
             if reasoning and softmap.requires_reasoning_history(self.ctx.llm.model):
                 assistant_msg["reasoning_content"] = reasoning
             self.messages.append(assistant_msg)
+
+            # 记录真实 token 用量（provider 回传的 usage，非估算）——供 tokenMeter 锚点
+            if finish_usage is not None:
+                total = finish_usage.get("total_tokens")
+                if total:
+                    meter = getattr(self.ctx, "tokenMeter", None)
+                    if meter is not None:
+                        meter.record_usage(self.ctx.llm.model, total, finish_usage)
+
             self.session.append(
                 "assistant-message",
                 {
@@ -242,6 +253,7 @@ class ReactLoopAgent:
                     "stop_reason": stop_reason,
                     "reasoning": reasoning,
                     "chunk_seqs": chunk_seqs,
+                    "usage": finish_usage,
                 },
             )
             return

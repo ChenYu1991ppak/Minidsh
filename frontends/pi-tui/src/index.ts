@@ -82,8 +82,8 @@ function previewLines(text: string, maxLines: number, width: number): { lines: s
 /** Status bar: model, effort, session id, token usage. */
 function statusBar(width: number): string[] {
   const usage = state.usage;
-  const pct = usage?.totalTokens && usage?.contextWindow
-    ? ` ${Math.round(usage.totalTokens / usage.contextWindow * 100)}%`
+  const pct = usage?.used && usage?.size
+    ? ` ${Math.round(usage.used / usage.size * 100)}% (${usage.used}/${usage.size})`
     : "";
   const line = ` mini-dsh  ${state.model}(${state.effort})${pct}  ${state.sessionId ?? "connecting..."}`;
   return [truncateToWidth(line, width)];
@@ -225,6 +225,10 @@ async function main(): Promise<void> {
         if (update.toolCallId && content?.[0]?.content) {
           state.setToolResult(update.toolCallId, content[0].content, (update as { isError?: boolean }).isError ?? false);
         }
+        break;
+      }
+      case "usage_update": {
+        state.usage = { used: update.used, size: update.size };
         break;
       }
     }

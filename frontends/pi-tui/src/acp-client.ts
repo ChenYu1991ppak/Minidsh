@@ -41,6 +41,9 @@ export interface SessionUpdate {
   title?: string;
   kind?: string;
   status?: string;
+  /** usage_update 携带：已用 token 数 + 上下文窗口大小。 */
+  used?: number;
+  size?: number;
 }
 
 export type NotificationHandler = (method: string, params: Record<string, unknown>) => void;

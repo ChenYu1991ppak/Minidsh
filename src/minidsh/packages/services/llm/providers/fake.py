@@ -50,6 +50,7 @@ class FakeLlm(LlmRuntime, CapabilityProvider):
                 yield Chunk(kind="reasoning-delta", reasoning=row["reasoning"])
             text = row.get("text", "")
             yield Chunk(kind="text-delta", text=text)
+            # 假 LLM 无 provider usage：用确定性占位（缺省无 usage → 前端不回退估算）
             yield Chunk(kind="finish", stop_reason="end-turn")
 
 

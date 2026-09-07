@@ -30,7 +30,8 @@ class Chunk:
     - "reasoning-delta" 思考文本增量（reasoning 字段）
     - "text-delta"      回复文本增量（text 字段）
     - "tool-call"       模型请求一次工具调用（携带 id/name/arguments）
-    - "finish"          结束（携带 stop_reason）
+    - "finish"          结束（携带 stop_reason；usage 字段携带 provider 回传的
+                        真实 token 计数，见 llm 侧的 include_usage 流式开关）
     """
 
     kind: Literal["reasoning-delta", "text-delta", "tool-call", "finish"]
@@ -40,6 +41,7 @@ class Chunk:
     name: str | None = None          # tool-call 用：工具名
     arguments: str | None = None     # tool-call 用：JSON 字符串参数
     stop_reason: str | None = None   # finish 用
+    usage: dict | None = None        # finish 用：provider 真实 token 用量（input/output/total）
 
 
 class LlmRuntime(CapabilityDefinition):

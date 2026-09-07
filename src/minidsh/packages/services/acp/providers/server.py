@@ -74,7 +74,8 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
 
         ``assistant-chunk``（流式增量）→ ``agent_message_chunk``；``assistant-message``
         是 flush 边界（含完整聚合文本），其内容已由前面的 ``assistant-chunk`` 流式发送，
-        故**不**再映射，否则前端收到两遍。
+        故**不**再映射为消息，而是映射为 ``usage_update``（携带 provider 回传的真实
+        token 用量，非估算）。
         """
         t = event.type
         p = event.payload
@@ -84,6 +85,17 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         if t == "reasoning-chunk":
             return {"sessionUpdate": AGENT_THOUGHT_CHUNK,
                     "content": {"type": "text", "text": p.get("text", "")}}
+        if t == "assistant-message":
+            usage = p.get("usage")
+            if not usage:
+                return None
+            total = usage.get("total_tokens")
+            if not total:
+                return None
+            size = getattr(self.ctx.config, "context_window", None)
+            if not size:
+                return None
+            return {"sessionUpdate": USAGE_UPDATE, "used": total, "size": size}
         if t == "tool-call":
             return {"sessionUpdate": TOOL_CALL,
                     "toolCallId": p.get("call_id"),
