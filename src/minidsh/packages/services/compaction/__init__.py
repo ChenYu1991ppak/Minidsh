@@ -6,8 +6,8 @@
 """
 from __future__ import annotations
 
-from .definition import CompactionStrategy, CompactionEngine, measure_messages
+from .definition import CompactionStrategy, CompactionEngine
 from .strategies.prune import PruneStrategy
 from .strategies.summarize import SummarizeStrategy
 
-__all__ = ["CompactionStrategy", "CompactionEngine", "PruneStrategy", "SummarizeStrategy", "measure_messages"]
+__all__ = ["CompactionStrategy", "CompactionEngine", "PruneStrategy", "SummarizeStrategy"]

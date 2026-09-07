@@ -4,7 +4,8 @@ from __future__ import annotations
 import pytest
 
 from minidsh.cordis import Context
-from minidsh.packages.services.compaction import PruneStrategy, SummarizeStrategy, measure_messages
+from minidsh.packages.services.compaction import PruneStrategy, SummarizeStrategy
+from minidsh.packages.services.compaction.definition import measure_messages
 from minidsh.packages.services.compaction.providers.compaction import BasicCompactionEngine
 from minidsh.packages.services.loop import AgentLoop
 from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
@@ -42,7 +43,7 @@ def _long_messages(n=20):
 
 def test_measure_messages():
     assert measure_messages([{"role": "user", "content": "abcd"}]) == 1
-    assert measure_messages([{"role": "user", "content": ""}]) == 1
+    assert measure_messages([{"role": "user", "content": ""}]) == 0   # 空文本 → 0 token
     assert measure_messages([{"role": "user", "content": None}]) == 0
 
 

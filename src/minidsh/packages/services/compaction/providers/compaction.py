@@ -5,7 +5,6 @@ from minidsh.packages.services.compaction.definition import (
     CompactionEngine,
     CompactionStrategy,
     PruneStrategy,
-    measure_messages,
 )
 from minidsh.packages.services.token_meter import estimate_message
 from minidsh.cordis import CapabilityProvider

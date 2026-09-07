@@ -19,7 +19,7 @@ from typing import Any, Literal
 
 from minidsh.cordis import CapabilityDefinition
 
-__all__ = ["Chunk", "LlmRuntime", "estimate_tokens"]
+__all__ = ["Chunk", "LlmRuntime"]
 
 
 @dataclass(frozen=True)
@@ -69,11 +69,3 @@ class LlmRuntime(CapabilityDefinition):
     def reconfigure(self, spec) -> None:
         """运行时更新模型/温度/思考强度（TUI 切模型/强度用）；缺省 no-op。"""
         raise NotImplementedError
-
-
-def estimate_tokens(text: str) -> int:
-    """token 粗估：chars/4（无 tokenizer 依赖；仅阈值触发用）。
-
-    [教学简化] 真实版用 token-meter 精确计数；此处 chars/4 是行业通用粗估。
-    """
-    return max(1, len(text) // 4)

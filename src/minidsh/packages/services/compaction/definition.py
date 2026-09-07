@@ -21,19 +21,22 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from minidsh.cordis import CapabilityDefinition
-from ..llm import estimate_tokens
+from ..token_meter import estimate_tokens
 
 __all__ = [
     "CompactionStrategy",
     "CompactionEngine",
-    "measure_messages",
     "PruneStrategy",
     "SummarizeStrategy",
 ]
 
 
 def measure_messages(messages: list[dict]) -> int:
-    """估算消息列表的 token 总量（token-meter 的粗估替代）。"""
+    """估算消息列表的 token 总量（token-meter 的粗估替代）。
+
+    仅 CompactionEngine 基类兜底调用；BasicCompactionEngine 已覆盖 maybe_compact/
+    compact_now，走 tokenMeter.measure() 获取真实 token 用量。
+    """
     total = 0
     for m in messages:
         content = m.get("content")
