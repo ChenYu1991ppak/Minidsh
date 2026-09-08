@@ -61,7 +61,7 @@ minidsh --profile tui   # auto-spawns the pi-tui frontend
 ## Testing
 
 The pi-tui frontend has no automated tests yet (requires a real TTY environment). The Python-side ACP protocol
-is covered by 18 tests (`tests/tools/test_acp.py`); `minidsh --profile acp-fake` provides an API-key-free ACP server.
+is covered by 18 tests (`tests/tools/test_acp.py`).
 
 ## References
 

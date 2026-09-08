@@ -25,6 +25,33 @@ __all__ = ["resolve_profile", "profile_path", "DEFAULT_BUNDLES"]
 DEFAULT_BUNDLES = [BUILTIN_BUNDLE_NAME]
 
 
+def _expand_bundles(bundle_names: list[str]) -> list[str]:
+    """展开 bundle 依赖图：每个 bundle 可声明 ``bundles:`` 依赖，递归展开。
+
+    返回拓扑序列表（依赖在前，base 排最前）。
+    """
+    seen: set[str] = set()
+    result: list[str] = []
+    # 确保 base 总是最先加载
+    if BUILTIN_BUNDLE_NAME not in seen:
+        seen.add(BUILTIN_BUNDLE_NAME)
+        result.append(BUILTIN_BUNDLE_NAME)
+
+    def _walk(name: str):
+        if name in seen:
+            return
+        seen.add(name)
+        bundle = load_bundle(name)
+        if bundle is not None:
+            for dep in bundle.bundles:
+                _walk(dep)
+        result.append(name)
+
+    for name in bundle_names:
+        _walk(name)
+    return result
+
+
 def profile_path(name: str, home: str | Path | None = None) -> Path:
     from minidsh.infrastructure.config.files import user_config_dir
 
@@ -110,10 +137,11 @@ def resolve_profile(
     if extra_bundles:
         bundles = bundles + [b for b in extra_bundles if b not in bundles]
 
-    # 展开 bundles 的 plugins（base + 选定 bundles，按序 merge）
+    # 展开 bundles 的 plugins（所有 bundle，按依赖序展开）
     plugin_layers: list[list[PluginRef]] = []
     removes: list[str] = []
-    for bname in bundles:
+    expanded = _expand_bundles(bundles)
+    for bname in expanded:
         bundle = load_bundle(bname)
         if bundle is not None:
             plugin_layers.append(bundle.plugins)

@@ -36,21 +36,27 @@ class PluginRef:
 
 @dataclass(frozen=True)
 class Bundle:
-    """一个 bundle：名字 + 它激活哪些插件（plugins）+ 移除哪些（remove）。"""
+    """一个 bundle：名字 + 它依赖哪些 bundle（bundles）+ 激活哪些插件（plugins）+ 移除哪些（remove）。"""
 
     name: str
     plugins: list[PluginRef]
     remove: list[str] = ()
+    bundles: list[str] = ()
 
 
-def parse_plugins(text: str) -> tuple[list[PluginRef], list[str]]:
-    """解析含 ``plugins:`` / ``remove:`` 的 YAML 文本 → (plugins, remove)。
+def parse_plugins(text: str) -> tuple[list[PluginRef], list[str], list[str]]:
+    """解析含 ``bundles:`` / ``plugins:`` / ``remove:`` 的 YAML 文本 → (plugins, remove, bundles)。
 
-    bundle 文件与 profile 文件共用此格式（顶层两个键）。
+    bundle 文件与 profile 文件共用此格式（顶层三键）。
     """
     data = yaml.safe_load(text) or {}
     if not isinstance(data, dict):
-        raise ValueError("bundle/profile 必须是 mapping（顶层 plugins:/remove: 键）")
+        raise ValueError("bundle/profile 必须是 mapping（顶层 bundles:/plugins:/remove: 键）")
+
+    raw_bundles = data.get("bundles") or []
+    if not isinstance(raw_bundles, list) or not all(isinstance(b, str) for b in raw_bundles):
+        raise ValueError("bundles 必须是字符串列表")
+    bundles: list[str] = list(raw_bundles)
 
     raw_plugins = data.get("plugins") or []
     if not isinstance(raw_plugins, list):
@@ -71,7 +77,7 @@ def parse_plugins(text: str) -> tuple[list[PluginRef], list[str]]:
     removes = data.get("remove") or []
     if not isinstance(removes, list) or not all(isinstance(x, str) for x in removes):
         raise ValueError("remove 必须是字符串列表")
-    return plugins, removes
+    return plugins, removes, bundles
 
 
 def merge_plugins(layers: list[list[PluginRef]]) -> list[PluginRef]:
@@ -111,5 +117,5 @@ def load_bundle(name: str) -> Bundle | None:
 def _load_bundle_file(path: Path) -> Bundle | None:
     if not path.is_file():
         return None
-    plugins, removes = parse_plugins(path.read_text(encoding="utf-8"))
-    return Bundle(name=path.stem, plugins=plugins, remove=removes)
+    plugins, removes, bundles = parse_plugins(path.read_text(encoding="utf-8"))
+    return Bundle(name=path.stem, plugins=plugins, remove=removes, bundles=bundles)

@@ -118,7 +118,6 @@ mkdir -p ~/.minidsh
 
 ```bash
 make tui                          # 启动 pi-tui TUI
-make tui-fake                     # 免 API key 启动（假 LLM）
 ```
 
 或直接运行：
@@ -140,7 +139,6 @@ make clean      # 清理编译产物与缓存
 
 ```bash
 minidsh --profile acp              # ACP JSON-RPC server（需 API key）
-minidsh --profile acp-fake         # 免 API key 的 ACP server（假 LLM）
 ```
 
 ## 自定义 profile

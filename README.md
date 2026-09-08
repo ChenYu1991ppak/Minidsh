@@ -118,7 +118,6 @@ Example `models.json`:
 
 ```bash
 make tui                          # Start pi-tui TUI
-make tui-fake                     # Start without API key (fake LLM)
 ```
 
 Or run directly:
@@ -140,7 +139,6 @@ If you don't need the TUI frontend, you can use the ACP server directly:
 
 ```bash
 minidsh --profile acp              # ACP JSON-RPC server (requires API key)
-minidsh --profile acp-fake         # ACP server without API key (fake LLM)
 ```
 
 ## Custom Profiles

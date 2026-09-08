@@ -61,7 +61,7 @@ minidsh --profile tui   # 自动 spawn pi-tui 前端
 ## 测试
 
 pi-tui 前端目前无自动测试（需真实 TTY 环境）。Python 侧 ACP 协议已覆盖 18 个测试
-（`tests/tools/test_acp.py`），`minidsh --profile acp-fake` 提供免 API key 的 ACP 服务端。
+（`tests/tools/test_acp.py`）。
 
 ## 参考
 

@@ -62,7 +62,7 @@ export class AcpClient extends EventEmitter {
     const opts: AcpClientOptions = { ...this.options, ...overrides };
     // MINIDSH_BIN 由 launcher（minidsh --profile tui）注入；否则默认 "minidsh"
     const bin = process.env.MINIDSH_BIN ?? opts.bin ?? "minidsh";
-    // ACP 后端 profile：默认 acp，可用 MINIDSH_ACP_PROFILE 覆盖（如 acp-fake 免 API key）
+    // ACP 后端 profile：默认 acp，可用 MINIDSH_ACP_PROFILE 覆盖
     const profile = process.env.MINIDSH_ACP_PROFILE ?? "acp";
     const args = ["--profile", profile, ...(opts.extraArgs ?? [])];
     const cwd = opts.cwd ?? process.cwd();
