@@ -127,7 +127,11 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
             obj = read_request(line)
             if obj is None:
                 continue
-            await self._dispatch(obj)
+            try:
+                await self._dispatch(obj)
+            except Exception:
+                # 单个请求失败不崩溃整个 server 循环
+                pass
         await self.stop()
 
     async def stop(self) -> None:
@@ -204,6 +208,9 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         except JsonRpcError as e:
             write_error(message_id, e)
             return
+        except Exception as e:
+            write_error(message_id, JsonRpcError(-32603, f"内部错误：{e}"))
+            return
         write_response(message_id, {"key": key, "value": value})
 
     def _start_prompt(self, params: dict, message_id: Any) -> None:
@@ -231,6 +238,8 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         except BrokenPipeError:
             # 客户端（pi-tui 前端）已退出，管道断裂——静默收敛，不再尝试写响应
             pass
+        except Exception as exc:
+            self._safe_write(lambda: write_response(message_id, {"stopReason": "error", "error": str(exc)}))
         finally:
             self._running.pop(session_id, None)
 

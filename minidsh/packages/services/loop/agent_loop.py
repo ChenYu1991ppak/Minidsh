@@ -189,14 +189,24 @@ class ReactLoopAgent:
 
     async def _react(self):
         """react 主循环：模型调用 → 有工具调用则执行继续，无则收尾。"""
-        system_text = self.ctx.systemPrompt.render()
-        tools = self.ctx.tools.openai_schemas()
+        try:
+            system_text = self.ctx.systemPrompt.render()
+            tools = self.ctx.tools.openai_schemas()
+        except Exception as exc:
+            self._turn_reason = "error"
+            self.session.append("error", {"message": f"system prompt / tools 准备失败：{exc}"})
+            return
 
         # token 压力触发的压缩（若 compaction 服务已提供）：只在文本收尾前做一次检查，
         # 避免在工具往返中间打断 react 连续性。
         compaction = getattr(self.ctx, "compaction", None)
         if compaction is not None:
-            await compaction.maybe_compact(self)
+            try:
+                await compaction.maybe_compact(self)
+            except Exception as exc:
+                self._turn_reason = "error"
+                self.session.append("error", {"message": f"compaction 失败：{exc}"})
+                return
 
         for _ in range(_MAX_REACT_STEPS):
             tool_calls: list[Chunk] = []
@@ -206,27 +216,37 @@ class ReactLoopAgent:
             stop_reason: str | None = None
             finish_usage: dict | None = None
 
-            async for chunk in self.ctx.llm.stream(
-                self.messages, system_prompt=system_text, tools=tools
-            ):
-                if chunk.kind == "reasoning-delta":
-                    ev = self.session.append("reasoning-chunk", {"text": chunk.reasoning})
-                    reasoning_parts.append(chunk.reasoning)
-                elif chunk.kind == "text-delta":
-                    ev = self.session.append("assistant-chunk", {"text": chunk.text})
-                    chunk_seqs.append(ev.seq)
-                    text_parts.append(chunk.text)
-                elif chunk.kind == "tool-call":
-                    tool_calls.append(chunk)
-                elif chunk.kind == "finish":
-                    stop_reason = chunk.stop_reason
-                    finish_usage = chunk.usage
+            try:
+                async for chunk in self.ctx.llm.stream(
+                    self.messages, system_prompt=system_text, tools=tools
+                ):
+                    if chunk.kind == "reasoning-delta":
+                        ev = self.session.append("reasoning-chunk", {"text": chunk.reasoning})
+                        reasoning_parts.append(chunk.reasoning)
+                    elif chunk.kind == "text-delta":
+                        ev = self.session.append("assistant-chunk", {"text": chunk.text})
+                        chunk_seqs.append(ev.seq)
+                        text_parts.append(chunk.text)
+                    elif chunk.kind == "tool-call":
+                        tool_calls.append(chunk)
+                    elif chunk.kind == "finish":
+                        stop_reason = chunk.stop_reason
+                        finish_usage = chunk.usage
+            except Exception as exc:
+                self._turn_reason = "error"
+                self.session.append("error", {"message": f"LLM 调用失败：{exc}"})
+                return
 
             # 工具调用轮：assistant 消息按需带 reasoning_content 回传（软映射层判
             # requires_reasoning_history → 保留；否则 strip）。见 _execute_tools。
             reasoning = "".join(reasoning_parts)
             if tool_calls:
-                await self._execute_tools(tool_calls, reasoning=reasoning)
+                try:
+                    await self._execute_tools(tool_calls, reasoning=reasoning)
+                except Exception as exc:
+                    self._turn_reason = "error"
+                    self.session.append("error", {"message": f"工具执行异常：{exc}"})
+                    return
                 # ask_user_question 兜底：执行后立即结束 turn（不等待模型继续思考）
                 if any(c.name == "ask_user_question" for c in tool_calls):
                     self._turn_reason = "asked"

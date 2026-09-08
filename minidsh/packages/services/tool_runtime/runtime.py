@@ -396,9 +396,12 @@ class ToolRuntime(CapabilityProvider):
         if tool is None:
             return ToolResult(content=f"unknown tool: {exec_.name}", is_error=True)
 
-        value = tool.execute(exec_.arguments)
-        if inspect.isawaitable(value):
-            value = await value
+        try:
+            value = tool.execute(exec_.arguments)
+            if inspect.isawaitable(value):
+                value = await value
+        except Exception as exc:
+            return ToolResult(content=f"工具执行异常：{exc}", is_error=True)
 
         # 校验：规范值须符合 output.schema（不符 → 错误结果）
         try:
@@ -414,7 +417,10 @@ class ToolRuntime(CapabilityProvider):
             except Exception:
                 meta = None
 
-        content = tool.output.render(exec_.arguments, value)
+        try:
+            content = tool.output.render(exec_.arguments, value)
+        except Exception as exc:
+            return ToolResult(content=f"渲染失败：{exc}", is_error=True)
         return ToolResult(content=str(content), meta=meta)
 
     async def _post(self, exec_: ToolExecution, result: ToolResult):
