@@ -129,9 +129,14 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
                 continue
             try:
                 await self._dispatch(obj)
-            except Exception:
-                # 单个请求失败不崩溃整个 server 循环
-                pass
+            except Exception as exc:
+                # 请求级异常：写错误响应，不崩溃 server 循环
+                message_id = obj.get("id")
+                if message_id is not None:
+                    try:
+                        write_error(message_id, JsonRpcError(-32603, f"内部错误：{exc}"))
+                    except Exception:
+                        pass
         await self.stop()
 
     async def stop(self) -> None:
@@ -188,15 +193,16 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
 
     def _latest_session(self) -> dict:
         """恢复最近一次会话（按 mtime），无历史会话则创建新会话。"""
-        persistence = getattr(self.ctx, "sessionPersistence", None)
-        if persistence is not None:
-            sid = persistence.latest()
+        backend = getattr(self.ctx, "_persistence_backend", None)
+        if backend is not None:
+            sid = backend.latest()
             if sid is not None:
-                events = persistence.load(sid)
-                loop = self.ctx.agent_loop
-                agent = loop.resume(sid, events=events)
-                self._sessions[agent.session.id] = agent
-                return {"sessionId": agent.session.id, "resumed": True}
+                events = backend.load_stored(sid)
+                if events:
+                    loop = self.ctx.agent_loop
+                    agent = loop.resume(sid, events=events)
+                    self._sessions[agent.session.id] = agent
+                    return {"sessionId": agent.session.id, "resumed": True}
         # 回退：无持久化后端或无历史 → 创建新会话
         return self._new_session({})
 
