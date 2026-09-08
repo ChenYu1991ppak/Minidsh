@@ -56,7 +56,7 @@ class Config:
     available_models: list[str] = field(default_factory=list)
     current_model: str | None = None     # currentModel 字段值（未解析时）
     storage: str = "jsonl"
-    context_window: int = 8000
+    context_window: int = 32000
     compaction_threshold_ratio: float = 0.8
     allowed_tools: list[str] | None = None   # None = 全部内置工具
 

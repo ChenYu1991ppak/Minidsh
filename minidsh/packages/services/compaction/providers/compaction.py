@@ -27,7 +27,7 @@ def _measure(agent) -> int:
 class BasicCompactionEngine(CompactionEngine, CapabilityProvider):
     """CompactionEngine 的本地实现：完整阈值判定 + 触发压缩。构造即注册 ctx.compaction。"""
 
-    def _init(self, ctx, *, context_window: int = 8000, threshold_ratio: float = 0.8,
+    def _init(self, ctx, *, context_window: int = 32000, threshold_ratio: float = 0.8,
               strategy: CompactionStrategy | None = None):
         self.ctx = ctx
         self.context_window = context_window

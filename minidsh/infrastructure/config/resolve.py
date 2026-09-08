@@ -10,7 +10,7 @@
 harness 设置独立在 settings.json：
     {
       "storage": "jsonl",
-      "compaction": {"contextWindow": 8000, "thresholdRatio": 0.8},
+      "compaction": {"contextWindow": 32000, "thresholdRatio": 0.8},
       "tools": {"allow": ["read_file","bash"]}
     }
 
