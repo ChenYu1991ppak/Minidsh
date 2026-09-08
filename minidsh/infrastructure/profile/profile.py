@@ -80,7 +80,7 @@ def resolve_profile(
     - bundles 覆盖：取「最后写 bundles 的那层」的非 base 部分 + [minidsh.base]。
     - plugins 累加：跨层同名替换、不同名追加。
     - remove 全局删。
-    - ``extra_bundles``：额外 bundle 名，追加到 base 之后（如 ``tui-textual`` 前端 bundle）。
+    - ``extra_bundles``：额外 bundle 名，追加到 base 之后（如 ``tui`` 前端 bundle）。
     """
     from minidsh.infrastructure.config.files import user_config_dir
 

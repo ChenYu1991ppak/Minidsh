@@ -63,9 +63,6 @@ def _patch_loader(monkeypatch, script=None):
     # app 插件替换成 headless 驱动：读 stdin 逐行驱动（等价旧 _run_repl），退出 flush，
     # 输出会话转录（Transcript render，不启动真终端）。
     def fake_app_apply(ctx, args):
-        from minidsh.infrastructure.tui.transcript import fold
-        from minidsh.infrastructure.tui.app import _Transcript
-
         import asyncio
         import sys as _sys
 
@@ -79,15 +76,14 @@ def _patch_loader(monkeypatch, script=None):
                     continue
                 agent.send(text)
                 await agent.run()
-            # 落盘屏障（等价旧 _run_repl）
             ctx.emit("session/flush", agent.session.id)
             backend = getattr(ctx, "_persistence_backend", None)
             if backend is not None and hasattr(backend, "close"):
                 backend.close()
 
         asyncio.run(_drive())
-        turns = fold(agent.session.events())
-        _sys.stdout.write(_Transcript().render_turns(turns).plain)
+        for event in agent.session.events():
+            _sys.stdout.write(f"{event.type}: {event.payload.get('text', '') or event.payload.get('content', '')}\n")
         return 0
 
     monkeypatch.setattr(cli_module, "find_app_plugin", lambda ctx, entries: fake_app_apply)
@@ -104,9 +100,8 @@ def test_run_completes_closed_loop(tmp_path, monkeypatch):
     code, out, err = _run_cli([str(demo)], stdin_text="问候\n")
 
     assert code == 0, err
-    # 转录渲染出 user turn（"### 你"）与 assistant turn（"### assistant"）
-    assert "### 你" in out
-    assert "### assistant" in out
+    assert "user-message" in out
+    assert "assistant" in out
 
 
 def test_run_persists_session_jsonl(tmp_path, monkeypatch):

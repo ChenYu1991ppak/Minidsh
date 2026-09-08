@@ -4,12 +4,11 @@ English | [中文](pi-tui_zh.md)
 
 ## Why pi-tui
 
-mini-dsh has two TUI frontend lines:
+mini-dsh uses pi-tui as its TUI frontend:
 
 | Frontend | Tech stack | Form | Use case |
 |---|---|---|---|
-| `tui-textual` | Python + Textual | In-process cordis plugin | Chinese terminal, teaching reference, single-Python-process deployment |
-| `pi-tui` | TypeScript + `@earendil-works/pi-tui` | Standalone Node.js process, ACP protocol | Aligned with the official dsh-tui ecosystem, software-development terminal |
+| mini-dsh TUI | TypeScript + `@earendil-works/pi-tui` | Standalone Node.js process, ACP protocol | Aligned with the official dsh-tui ecosystem, software-development terminal |
 
 ## Decision Rationale
 
@@ -50,10 +49,10 @@ mini-dsh has two TUI frontend lines:
 
 ```bash
 # 1. Install frontend dependencies
-cd frontends/pi-tui && npm install && npm run build
+cd /path/to/minidsh/infrastructure/tui/pi-tui && npm install && npm run build
 
 # 2. Start (requires the minidsh Python backend installed)
-cd /path/to/project && npx tsx /path/to/frontends/pi-tui/src/index.ts
+cd /path/to/project && npx tsx /path/to/minidsh/infrastructure/tui/pi-tui/src/index.ts
 
 # 2b. Or via the launcher (forthcoming)
 minidsh --profile tui   # auto-spawns the pi-tui frontend

@@ -129,7 +129,7 @@ def _boot(args: BootArgs) -> int:
     if apply_fn is None:
         print(
             "[minidsh] 无 app 插件：请在 profile 的 plugins 里激活一个 minidsh.app-* 前端"
-            "（例如 --profile tui-textual）",
+            "（例如 --profile tui）",
             file=sys.stderr,
         )
         return 1

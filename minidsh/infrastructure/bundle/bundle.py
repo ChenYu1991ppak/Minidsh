@@ -100,7 +100,7 @@ def load_bundle(name: str) -> Bundle | None:
     """按名加载 bundle。
 
     v1 支持内置 bundle：读 ``bundles/<name>.yaml``（含 ``minidsh.base`` 与
-    ``minidsh.tui-textual`` 等前端 bundle）。第三方 bundle 后续接 entry-point /
+    ``minidsh.tui`` 等前端 bundle）。第三方 bundle 后续接 entry-point /
     文件发现，同归一为 Bundle。
 
     未找到返回 None（调用方决定是否报错）。

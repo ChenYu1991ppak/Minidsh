@@ -16,7 +16,7 @@ session 事件流 / LLM 适配 / compaction，做到可运行、可观测、可�
 
 - 对齐目标是官方 [`packages/*/src` + `docs/subsystems/*`]，机制名与逐章注释对齐教学仓 `deepseek-harness-anatomy/`（只读）。
 - **忠实 > 精简**：先保证机制形态对（seam 三角色、事件流、提供方可替换），再谈实现难度。
-- 参考仓库 `deepseek-harness-anatomy/` 是**只读**的独立 git 仓库，改动只发生在 `src/minidsh/` 与 `tests/`。
+- 参考仓库 `deepseek-harness-anatomy/` 是**只读**的独立 git 仓库，改动只发生在 `minidsh/` 与 `tests/`。
 
 ## 2. 世界观（三条铁律）
 
@@ -43,7 +43,7 @@ session 事件流 / LLM 适配 / compaction，做到可运行、可观测、可�
 ## 4. 目录职责（不可混淆）
 
 ```
-src/minidsh/
+minidsh/
 ├── cordis/                # 内核，独立（等价官方 @deepseek-ai/cordis）
 │   └── capability.py      #   三角色抽象基类
 ├── infrastructure/        # 支撑：不是能力，是装配/配置/打包/前端
@@ -52,7 +52,7 @@ src/minidsh/
 │   ├── config/            #   Config/ModelSpec + resolve + files + providers
 │   ├── packaging/         #   entry-point 发现 + plugin 命令
 │   ├── profile/           #   resolve_profile 覆盖链
-│   └── tui/               #   交互式前端（transcript 视图模型 / Textual App / bridge）
+│   └── tui/               #   交互式前端（pi-tui spawner）
 ├── packages/
 │   ├── core/               # 共享「库原语」（非 ctx 服务，官方 core/scope 的对应）
 │   │   └── scope/          #   ScopeKey / Scope / ScopedLayers / createScope
@@ -80,7 +80,7 @@ src/minidsh/
 
 ## 5. 能力三角色规约（建一个新能力的流程）
 
-定义见 [cordis/capability.py](../src/minidsh/cordis/capability.py)：
+定义见 [cordis/capability.py](../minidsh/cordis/capability.py)：
 
 - `CapabilityDefinition`：**纯契约**——只声明类属性 `service_name` + 接口方法，不自注册。定义放 `services/<x>/definition.py`。
 - `CapabilityProvider`：`Definition + Service`，**构造即注册**到 `service_name`，初始化覆写 `_init(ctx, *args, **kw)`（不要手写 `super().__init__(ctx, "x")`）。放 `services/<x>/providers/<name>.py`。
@@ -97,7 +97,7 @@ src/minidsh/
 
 ## 6. 插件规范
 
-**四形态**（[normalize_plugin](../src/minidsh/cordis/plugin.py) 归一）：
+**四形态**（[normalize_plugin](../minidsh/cordis/plugin.py) 归一）：
 
 ```python
 # 1) module（本项目消费方工具/服务 provider 的主流形态）
@@ -140,7 +140,7 @@ def apply(ctx): ...
 
 - `ToolDefinition(name, description, parameters[OpenAI JSON Schema], execute[async], output[ToolOutput(schema, render)])`
 - `ToolOutput.schema` 声明**规范值**类型、`render(args, value)->str` 转成给模型的内容。
-- 执行管线（[runtime.py](../src/minidsh/packages/services/tool_runtime/runtime.py)）：
+- 执行管线（[runtime.py](../minidsh/packages/services/tool_runtime/runtime.py)）：
   `pre-execute 瀑布 → 单调 guard → execute → post-execute 瀑布`，产出 `ToolResult` 并广播 `tools/result`。
 - 参数取**规范值**（`execute` 收 dict），JSON 反序列化由 loop 做（`_parse_arguments`）。
 - 工具名沿用官方（`bash`/`read_file`/`skill-catalog`/`task`）。
@@ -151,7 +151,7 @@ def apply(ctx): ...
 **seam**：`llm/definition.py` 定义 `LlmRuntime.stream` + `Chunk`（内核/loop 不 import openai
 类型）；`llm/providers/openai.py` 是唯一 import openai 的地方。将来加 anthropic = 新增 provider。
 
-**思考五档与软映射**（[softmap.py](../src/minidsh/packages/services/llm/softmap.py)）：
+**思考五档与软映射**（[softmap.py](../minidsh/packages/services/llm/softmap.py)）：
 - 统一枚举 `reasoningEffort`：`off / minimal / low / medium / high`（默认 `medium`），
   存 `ModelSpec.reasoning_effort`，非法档位解析期抛 `ValueError`（fail fast）。
 - **软映射层是纯函数、只认 model id 家族（前缀）**，无视 vendor 字段（对齐 claw-code）。
@@ -177,7 +177,7 @@ def apply(ctx): ...
 
 ## 10. 会话事件契约
 
-- `SessionEventType` 白名单（[event.py](../src/minidsh/packages/services/session/event.py)）：
+- `SessionEventType` 白名单（[event.py](../minidsh/packages/services/session/event.py)）：
   `user-message / assistant-chunk / assistant-message / reasoning-chunk / tool-call /
   tool-result / model-change / skill-loaded / subagent-spawn / subagent-result /
   compaction / error`。
@@ -185,15 +185,13 @@ def apply(ctx): ...
 - `SessionEvent` frozen（对齐官方 deepFreeze 的不可变语义）；payload 契约「append 后不改」。
 - **刷盘边界 = `assistant-message`**（v1「一条回复」边界），另有 `session/flush` 事件作显式屏障。
 
-## 10-b. TUI 前端（观察者，不碰 core 机制）
+## 10-b. TUI 前端（pi-tui，ACP 协议）
 
-- **定位**：`infrastructure/tui/` 是「可观测性」的前端，不是 `packages/services/` 能力。
-- **只读观察者**：只订阅 `session/event` 渲染，不新增事件、不改 loop/tools；一律 `post_message`
-  异步转发，**绝不**在同一事件循环里起第二个 `asyncio.run`。
-- **视图模型与渲染解耦**：`transcript.py`（`fold` 纯函数，事件 → turn 树）不 import Textual、
-  可脱离终端单测；`app.py`/`bridge.py` 才碰 UI。
-- **交互命令**（斜杠）：`/exit`、`/model <id>`（切模型，同会话续聊，跨所有 models.json 模型）、
-  `/thinking <档位>`（切思考强度）；状态栏显示「模型(档位)」。`replay`/`plugin` 仍是独立 CLI 子命令。
+- **定位**：`infrastructure/tui/` 承载 pi-tui launcher，不是 `packages/services/` 能力。
+- **pi-tui 前端**：TypeScript + `@earendil-works/pi-tui`，独立 Node.js 进程，经 ACP JSON-RPC stdio 协议通信。
+  源码在 `infrastructure/tui/pi-tui/`；启动插件 `app_pi_tui.py` spawn Node.js 子进程。
+- **进程隔离**：Python 端跑 agent/session/tools，Node 端只管终端渲染+输入，职责清晰，互不阻塞。
+- **启动**：`minidsh --profile tui` spawn pi-tui 前端子进程并等待其退出。
 - 无 `run` 子命令：`minidsh [dir]`（dir 缺省 cwd）直接启动 TUI。
 
 ## 11. 命名规约（汇总表）
@@ -219,14 +217,14 @@ def apply(ctx): ...
   - 脚本化 client 支持 `{"reasoning": "...", "text": "..."}` 轮次 → 产 `reasoning-delta` + `text-delta`。
 - **执行世界装配**：shell-local 依赖 subprocess，测试里用 `tests/helpers/world.py` 的 `plug_execution_world(ctx)` 一次插好 subprocess→shell→fs，再 plugin 工具。
 - **bwrap 测试 skip 门控**：sandbox 用 `pytest.mark.skipif(shutil.which("bwrap") is None)`，无 bwrap 环境跳过（不假装 full）。
-- **TUI 测试**：视图模型（`fold`）纯单测；交互命令用 `App.run_test()`（Pilot）异步断言（斜杠命令 reconfigure / 状态栏刷新）。
+- **TUI 测试**：pi-tui 前端目前无自动测试（需真实 TTY 环境）。
 - **隔离 `MINIDSH_HOME`**：`tests/conftest.py` autouse fixture 把用户配置目录指向 tmp（防止读到真实 apiKey）。
 - 注意：**必须用 `python -m pytest` 跑**（裸 `pytest` 缺 `tests` 包路径，collect 会报 `No module named 'tests.helpers'`）。改了 pyproject 的 entry-point 后要 `pip install -e . --no-build-isolation` 才会刷新发现缓存。
 
 ## 14. 版本 / 发布 / 敏感信息
 
 - 版本号**单一真相源**：`minidsh/__init__.py` 的 `__version__`（pyproject 经 `attr` 读它）。
-- 打包：setuptools，**只发布 `src/` 库**（`packages.find where=["src"]`）；tests/examples/doc 不随库分发，但 doc/ 应进 git（见下）。
+- 打包：setuptools，**只发布 `minidsh/` 库**（`packages.find where=["minidsh"]`）；tests/examples/doc 不随库分发，但 doc/ 应进 git（见下）。
 - **敏感信息**：`apiKey` 明文只在 `models.json`（`chmod 600` + gitignore）；`.env`/`*.key` 永不提交。
 
 ---

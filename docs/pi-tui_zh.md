@@ -4,12 +4,11 @@
 
 ## 为什么选择 pi-tui
 
-mini-dsh 有两条 TUI 前端线：
+mini-dsh 以 pi-tui 作为 TUI 前端：
 
 | 前端 | 技术栈 | 形态 | 适用场景 |
 |---|---|---|---|
-| `tui-textual` | Python + Textual | 进程内 cordis 插件 | 中文终端、教学参考、单 Python 进程部署 |
-| `pi-tui` | TypeScript + `@earendil-works/pi-tui` | 独立 Node.js 进程, ACP 协议 | 对齐官方 dsh-tui 生态、软件开发终端 |
+| mini-dsh TUI | TypeScript + `@earendil-works/pi-tui` | 独立 Node.js 进程, ACP 协议 | 对齐官方 dsh-tui 生态、软件开发终端 |
 
 ## 决策依据
 
@@ -50,10 +49,10 @@ mini-dsh 有两条 TUI 前端线：
 
 ```bash
 # 1. 安装前端依赖
-cd frontends/pi-tui && npm install && npm run build
+cd /path/to/minidsh/infrastructure/tui/pi-tui && npm install && npm run build
 
 # 2. 启动（需 Python 后端已安装 minidsh）
-cd /path/to/project && npx tsx /path/to/frontends/pi-tui/src/index.ts
+cd /path/to/project && npx tsx /path/to/minidsh/infrastructure/tui/pi-tui/src/index.ts
 
 # 2b. 或经 launcher（后续）
 minidsh --profile tui   # 自动 spawn pi-tui 前端

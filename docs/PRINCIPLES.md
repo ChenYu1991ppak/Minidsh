@@ -16,7 +16,7 @@ session event stream / LLM adaptation / compaction, achieving runnable, observab
 
 - The alignment target is the official `packages/*/src` + `docs/subsystems/*`; mechanism names and chapter-by-chapter annotations align with the teaching repository `deepseek-harness-anatomy/` (read-only).
 - **Fidelity > simplification**: ensure the mechanism shape is correct first (seam tri-role, event stream, replaceable providers), then worry about implementation difficulty.
-- The reference repository `deepseek-harness-anatomy/` is a **read-only** standalone git repo; changes happen only in `src/minidsh/` and `tests/`.
+- The reference repository `deepseek-harness-anatomy/` is a **read-only** standalone git repo; changes happen only in `minidsh/` and `tests/`.
 
 ## 2. Worldview (Three Iron Laws)
 
@@ -43,7 +43,7 @@ The kernel is **synchronous and single-threaded** (spec §11-5). LLM streaming i
 ## 4. Directory Responsibilities (do not mix)
 
 ```
-src/minidsh/
+minidsh/
 ├── cordis/                # Kernel, independent (equivalent to official @deepseek-ai/cordis)
 │   └── capability.py      #   Tri-role abstract base classes
 ├── infrastructure/        # Support: not capabilities, but assembly/config/packaging/frontends
@@ -52,7 +52,7 @@ src/minidsh/
 │   ├── config/            #   Config/ModelSpec + resolve + files + providers
 │   ├── packaging/         #   entry-point discovery + plugin commands
 │   ├── profile/           #   resolve_profile overlay chain
-│   └── tui/               #   Interactive frontends (transcript view-model / Textual App / bridge / pi-tui spawner)
+│   └── tui/               #   Interactive frontends (pi-tui spawner)
 ├── packages/
 │   ├── core/              # Shared "library primitives" (non-ctx services, official core/scope equivalent)
 │   │   └── scope/         #   ScopeKey / Scope / ScopedLayers / createScope
@@ -72,7 +72,7 @@ src/minidsh/
 
 ## 5. Capability Tri-role Specification (process for building a new capability)
 
-Definitions in [cordis/capability.py](../src/minidsh/cordis/capability.py):
+Definitions in [cordis/capability.py](../minidsh/cordis/capability.py):
 
 - `CapabilityDefinition`: **pure contract** — only declares class attribute `service_name` + interface methods, never self-registers. Place in `services/<x>/definition.py`.
 - `CapabilityProvider`: `Definition + Service`, **self-registering on construction** to `service_name`, override `_init(ctx, *args, **kw)` for initialization (don't manually write `super().__init__(ctx, "x")`). Place in `services/<x>/providers/<name>.py`.
@@ -89,7 +89,7 @@ Definitions in [cordis/capability.py](../src/minidsh/cordis/capability.py):
 
 ## 6. Plugin Specification
 
-**Four forms** (normalized by [normalize_plugin](../src/minidsh/cordis/plugin.py)):
+**Four forms** (normalized by [normalize_plugin](../minidsh/cordis/plugin.py)):
 
 ```python
 # 1) module (the mainstream form for consumer tools / service providers in this project)
@@ -132,7 +132,7 @@ Current model: `currentModel` > first entry in `availableModels`.
 
 - `ToolDefinition(name, description, parameters[OpenAI JSON Schema], execute[async], output[ToolOutput(schema, render)])`
 - `ToolOutput.schema` declares the **canonical value** type, `render(args, value)->str` turns it into model-facing content.
-- Execution pipeline ([runtime.py](../src/minidsh/packages/services/tool_runtime/runtime.py)):
+- Execution pipeline ([runtime.py](../minidsh/packages/services/tool_runtime/runtime.py)):
   `pre-execute waterfall → monotonic guard → execute → post-execute waterfall`, produces `ToolResult` and broadcasts `tools/result`.
 - Arguments take **canonical values** (`execute` receives a dict), JSON deserialization is done by the loop (`_parse_arguments`).
 - Tool names follow the official ones (`bash`/`read_file`/`skill-catalog`/`task`).
@@ -143,7 +143,7 @@ Current model: `currentModel` > first entry in `availableModels`.
 **Seam**: `llm/definition.py` defines `LlmRuntime.stream` + `Chunk` (kernel/loop never imports openai types);
 `llm/providers/openai.py` is the only place that imports openai. Adding anthropic later = adding a new provider.
 
-**Five reasoning levels & soft-mapping** ([softmap.py](../src/minidsh/packages/services/llm/softmap.py)):
+**Five reasoning levels & soft-mapping** ([softmap.py](../minidsh/packages/services/llm/softmap.py)):
 - Unified enum `reasoningEffort`: `off / minimal / low / medium / high` (default `medium`),
   stored in `ModelSpec.reasoning_effort`, invalid levels throw `ValueError` at parse time (fail fast).
 - **The soft-mapping layer is a pure function, discriminating only by model id family (prefix)**, ignoring the vendor field (aligned with claw-code).
@@ -169,7 +169,7 @@ message's `reasoning_content` side-channel field; wire serialization decides ech
 
 ## 10. Session Event Contract
 
-- `SessionEventType` whitelist ([event.py](../src/minidsh/packages/services/session/event.py)):
+- `SessionEventType` whitelist ([event.py](../minidsh/packages/services/session/event.py)):
   `user-message / assistant-chunk / assistant-message / reasoning-chunk / tool-call /
   tool-result / model-change / skill-loaded / subagent-spawn / subagent-result /
   compaction / turn/start / turn/end / session/title / approval/asked / approval/decided / error`.
@@ -177,15 +177,13 @@ message's `reasoning_content` side-channel field; wire serialization decides ech
 - `SessionEvent` frozen (aligned with the official deepFreeze immutability semantics); payload contract: "don't mutate after append".
 - **Flush boundary = `assistant-message`** (v1 "one reply" boundary); additionally, `session/flush` event serves as an explicit barrier.
 
-## 10-b. TUI Frontend (observer, never touches core mechanisms)
+## 10-b. TUI Frontend (pi-tui, ACP protocol)
 
-- **Positioning**: `infrastructure/tui/` is the "observability" frontend, not a `packages/services/` capability.
-- **Read-only observer**: only subscribes to `session/event` for rendering, never adds new events or modifies loop/tools; always forwards via `post_message`
-  asynchronously, **never** starts a second `asyncio.run` in the same event loop.
-- **View-model and rendering decoupled**: `transcript.py` (`fold` pure function, events → turn tree) doesn't import Textual and is testable headlessly;
-  `app.py`/`bridge.py` are the only ones touching the UI.
-- **Interactive commands** (slash): `/exit`, `/model <id>` (switch model, same session, across all models.json models),
-  `/thinking <level>` (switch reasoning effort); status bar shows "model(effort)". `replay`/`plugin` remain standalone CLI subcommands.
+- **Positioning**: `infrastructure/tui/` hosts the pi-tui launcher, not a `packages/services/` capability.
+- **pi-tui frontend**: TypeScript + `@earendil-works/pi-tui`, standalone Node.js process communicating via ACP JSON-RPC stdio protocol.
+  Source in `infrastructure/tui/pi-tui/`; launcher plugin in `app_pi_tui.py` spawns the Node.js child process.
+- **Process isolation**: Python runs agent/session/tools; Node handles terminal rendering + input only — clear responsibilities, mutually non-blocking.
+- **Launch**: `minidsh --profile tui` spawns the pi-tui frontend subprocess and waits for it to exit.
 - No `run` subcommand: `minidsh [dir]` (dir defaults to cwd) launches the TUI directly.
 
 ## 11. Naming Conventions (summary table)
@@ -211,14 +209,14 @@ message's `reasoning_content` side-channel field; wire serialization decides ech
   - Scripted client supports `{"reasoning": "...", "text": "..."}` turns → produces `reasoning-delta` + `text-delta`.
 - **Execution world assembly**: shell-local depends on subprocess; tests use `tests/helpers/world.py`'s `plug_execution_world(ctx)` to plug subprocess→shell→fs in one go, then plugin the tools.
 - **bwrap test skip gate**: sandbox uses `pytest.mark.skipif(shutil.which("bwrap") is None)`, skip without bwrap (don't fake full).
-- **TUI tests**: view-model (`fold`) pure unit tests; interactive commands use `App.run_test()` (Pilot) async assertions (slash-command reconfigure / status-bar refresh).
+- **TUI tests**: pi-tui frontend has no automated tests (requires a real TTY environment).
 - **Isolate `MINIDSH_HOME`**: `tests/conftest.py` autouse fixture points user config directory to tmp (prevents reading real apiKey).
 - Note: **must run with `python -m pytest`** (bare `pytest` lacks the `tests` package path, collect will fail with `No module named 'tests.helpers'`). After changing pyproject's entry-points, re-run `pip install -e . --no-build-isolation` to refresh the discovery cache.
 
 ## 14. Version / Release / Sensitive Information
 
 - Version number **single source of truth**: `minidsh/__init__.py`'s `__version__` (pyproject reads it via `attr`).
-- Packaging: setuptools, **only publishes the `src/` library** (`packages.find where=["src"]`); tests/examples/doc are not distributed with the library, but doc/ should be in git.
+- Packaging: setuptools, **only publishes the `minidsh/` library** (`packages.find where=["minidsh"]`); tests/examples/doc are not distributed with the library, but doc/ should be in git.
 - **Sensitive information**: `apiKey` in plaintext only in `models.json` (`chmod 600` + gitignore); `.env`/`*.key` never committed.
 
 ---

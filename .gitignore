@@ -34,7 +34,7 @@ tasks/
 # 例外：根 README 与项目文档随 git 分发（docs/ 规则手册 + 生态选型 + 前端说明）
 !docs/
 !docs/**
-!frontends/pi-tui/README.md
+!minidsh/infrastructure/tui/pi-tui/README.md
 
 # 例外：doc/ 下的规则手册随 git 分发（构建原则是迭代依据，必须进库）
 !doc/

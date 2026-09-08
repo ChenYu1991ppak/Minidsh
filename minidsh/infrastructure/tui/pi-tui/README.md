@@ -1,13 +1,12 @@
 # mini-dsh pi-tui 前端
 
 pi-tui 终端前端，经 ACP 协议驱动 mini-dsh agent。生态选型说明见
-[`../../docs/pi-tui.md`](../../docs/pi-tui.md)；本项目内的 Textual TUI（`tui-textual`）保留为
-中文终端/教学参考的备选前端，二者经同一 `--profile` 机制挂载。
+[`../../../../docs/pi-tui.md`](../../../../docs/pi-tui.md)。
 
 ## 运行
 
 ```bash
-cd frontends/pi-tui
+cd minidsh/infrastructure/tui/pi-tui
 npm install
 npm run build        # tsc → dist/
 npm start ./project  # 在 ./project 下启动 ACP 前端

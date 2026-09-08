@@ -42,7 +42,7 @@ def load_project(
     - ``profile``：profile 名（或路径）；None = 默认 [minidsh.base]。
     - ``plugins``：（测试用）显式 plugins 名单，跳过覆盖链。
     - ``argv_path``：argv 覆盖 profile 文件（优先级最高）。
-    - ``extra_bundles``：额外 bundle 名（追加到 base 之后；如 ``tui-textual``）。
+    - ``extra_bundles``：额外 bundle 名（追加到 base 之后；如 ``tui`` 前端 bundle）。
     - ``extra_resolver``：第三方插件查找器（entry-point 发现）。
     """
     root = Path(project_dir).resolve()

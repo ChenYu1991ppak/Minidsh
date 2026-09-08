@@ -21,7 +21,7 @@ inject = []
 
 def _frontend_command(cwd: str) -> list[str]:
     """定位 pi-tui 前端入口，返回 node 启动命令。"""
-    frontend_dir = Path(__file__).resolve().parents[4] / "frontends" / "pi-tui"
+    frontend_dir = Path(__file__).resolve().parents[1] / "pi-tui"
     dist_entry = frontend_dir / "dist" / "index.js"
 
     if dist_entry.is_file():

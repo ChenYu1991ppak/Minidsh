@@ -46,7 +46,7 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         self._active = False                       # start() 后为 True，stop() 后为 False
         self._stopped = False
         # 订阅会话事件：start() 后才把事件映射成 ACP session/update 通知（避免
-        # 非 ACP 前端（如 tui-textual）也加载本服务时污染 stdout）。
+        # 非 ACP 前端也加载本服务时污染 stdout）。
         ctx.on("session/event", self._on_session_event)
 
     # ---------- 事件桥 ----------

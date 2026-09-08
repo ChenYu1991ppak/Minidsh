@@ -15,7 +15,7 @@ mini-dsh faithfully reproduces this architecture:
 - **Session event stream**: an append-only event log (20+ type whitelist); every observable behavior is recorded as an event, with TUI, persistence, compaction, and token metering as read-only observers
 - **Agent loop**: a react-style loop driver — streaming LLM → tool calls → result backfill → re-think → until text settlement
 - **LLM soft-mapping layer**: reasoning effort, temperature, and reasoning history for four model families (DeepSeek / Kimi / Qwen / GPT) are converged in pure functions
-- **Three frontend facades**: pi-tui terminal (aligned with the official dsh-tui), Textual TUI (Python in-process), and ACP JSON-RPC server (for external programs), switchable via `--profile`
+- **pi-tui terminal frontend**: TypeScript + `@earendil-works/pi-tui`, standalone Node.js process communicating via ACP JSON-RPC stdio protocol, aligned with the official dsh-tui
 - **Real token usage**: provider-returned usage (not estimates) flows through the `tokenMeter` anchor to the frontend display
 
 Compared to the official version (TypeScript + 40+ packages), mini-dsh is **minimally cut**: a single-repo single-package layout, synchronous kernel, and an educational event surface, while preserving all core mechanism shapes. Every deviation is marked `[教学简化]` (teaching simplification), and every alignment is marked `↔ official source location`.
@@ -37,36 +37,115 @@ Construction principles: [docs/PRINCIPLES.md](docs/PRINCIPLES.md).
 - **Tools**: registry + three-stage guard pipeline + bash / read_file + approval (ask / never + answerer) + skill loading + subagent delegation
 - **Retrieval**: web search / fetch (SSRF protection + HTML→text) + LSP four operations
 - **Compaction**: context compaction (threshold-triggered, prune / summarize)
-- **Frontends**: pi-tui terminal + Textual TUI + ACP JSON-RPC server, switchable via `--profile`
+- **Frontend**: pi-tui terminal + ACP JSON-RPC server, switchable via `--profile`
 - **Assembly**: bundle / profile overlay chain + `minidsh plugin` management
 
 Full list: [docs/FEATURE.md](docs/FEATURE.md).
 
-## Running
+## Project Structure
 
-### Installation
+```
+mini-dsh/
+├── Makefile                          # Task automation
+├── scripts/
+│   └── setup.sh                      # One-click install script
+├── minidsh/                          # Python package
+│   ├── __init__.py
+│   ├── cordis/                       # Plugin container kernel
+│   ├── infrastructure/               # Boot, config, bundle, profile, packaging, tui
+│   │   ├── boot/                     # CLI entry + project loader
+│   │   ├── bundle/                   # Bundle manifest loading
+│   │   ├── config/                   # Config / models.json / settings.json
+│   │   ├── packaging/                # Plugin discovery (entry-points)
+│   │   ├── profile/                  # Profile overlay chain
+│   │   └── tui/                      # pi-tui launcher + Node.js frontend
+│   │       ├── app_pi_tui.py         # App plugin: spawns pi-tui subprocess
+│   │       └── pi-tui/               # Node.js frontend (ACP client)
+│   ├── packages/
+│   │   ├── core/                     # Shared library primitives
+│   │   ├── services/                 # Capability services (20+ capabilities)
+│   │   └── tools/                    # Consumer tools (bash, read_file, web, lsp)
+│   └── bundles/                      # Built-in activation manifests
+├── tests/                            # Test suite (pytest)
+├── docs/                             # Design docs & principles
+└── pyproject.toml                    # Package metadata & entry-points
+```
+
+## Quick Start
+
+### Prerequisites
+
+- Python >= 3.11
+- Node.js >= 18 (auto-installed by setup script on Linux/macOS)
+
+### 1. Install
 
 ```bash
 git clone https://github.com/ChenYu1991ppak/Minidsh.git
 cd Minidsh
-pip install -e . --no-build-isolation
-
-# Configure model (required)
-mkdir -p ~/.minidsh
-# models.json embeds apiKey, see docs/PRINCIPLES.md §8
+make install
 ```
 
-### Starting the TUI
+This installs Python dependencies (`pip install -e .`), Node.js dependencies, and compiles the pi-tui frontend.
+
+### 2. Configure Your Model
+
+Create `~/.minidsh/models.json` with your API key:
 
 ```bash
-minidsh --profile tui [./project]          # pi-tui frontend (requires API key)
+mkdir -p ~/.minidsh
 ```
 
-> Run without API key: `MINIDSH_ACP_PROFILE=acp-fake minidsh --profile tui`
+Example `models.json`:
 
-### Custom Profiles
+```json
+{
+  "currentModel": "deepseek",
+  "availableModels": [
+    {
+      "id": "deepseek",
+      "baseUrl": "https://api.deepseek.com",
+      "apiKey": "sk-your-api-key-here",
+      "model": "deepseek-chat"
+    }
+  ]
+}
+```
 
-`--profile <name>` launches a custom profile or built-in bundle. See [docs/PRINCIPLES.md §7](docs/PRINCIPLES.md#7-bundle--profile-规约) for details.
+> Format reference: [docs/PRINCIPLES.md §8](docs/PRINCIPLES.md#8-configuration-specification).
+
+### 3. Launch the TUI
+
+```bash
+make tui                          # Start pi-tui TUI
+make tui-fake                     # Start without API key (fake LLM)
+```
+
+Or run directly:
+
+```bash
+minidsh --profile tui [./project] # pi-tui frontend
+```
+
+## Development
+
+```bash
+make test       # Run all tests (python -m pytest)
+make clean      # Clean build artifacts and caches
+```
+
+### Running Without Node.js
+
+If you don't need the TUI frontend, you can use the ACP server directly:
+
+```bash
+minidsh --profile acp              # ACP JSON-RPC server (requires API key)
+minidsh --profile acp-fake         # ACP server without API key (fake LLM)
+```
+
+## Custom Profiles
+
+`--profile <name>` launches a custom profile or built-in bundle. See [docs/PRINCIPLES.md §7](docs/PRINCIPLES.md#7-bundle--profile-specification) for details.
 
 ```yaml
 # ~/.minidsh/profiles/my.yaml
