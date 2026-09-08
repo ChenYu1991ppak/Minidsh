@@ -22,8 +22,9 @@ mini-dsh 忠实复刻了这一架构：
 
 ## 存在的意义
 
-1. **配合教学，逐机制对齐**：配套教学仓库 [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy)，本实现完全根据教学内容从 0 构建，每个能力/机制都能与官方 `packages/*/src` 对上号。
-2. **Python 开发者自建 agent harness 的起点**：不同分支对应不同构建阶段，可直接作为模板分叉出你自己的 agent harness。
+1. **Minidsh 本身就是一个独立的 agent harness**：以 Cordis 插件容器为内核，会话、循环、LLM、工具、技能、子代理、压缩、token 计量、审批、Web 检索等全部能力都是可插拔的插件。你可以当日常编码 agent 用，也可以组合进你自己的 Python 项目。
+2. **配合教学，逐机制对齐**：配套教学仓库 [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy)，本实现完全根据教学内容从 0 构建，每个能力/机制都能与官方 `packages/*/src` 对上号。
+3. **Python 开发者自建 agent harness 的起点**：不同分支对应不同构建阶段，可直接作为模板分叉出你自己的 agent harness。
 
 构建原则见 [docs/PRINCIPLES_zh.md](docs/PRINCIPLES_zh.md)。
 

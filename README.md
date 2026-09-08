@@ -22,8 +22,9 @@ Compared to the official version (TypeScript + 40+ packages), mini-dsh is **mini
 
 ## Why It Exists
 
-1. **Aligned with teaching, mechanism by mechanism**: companion teaching repository [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy); this implementation is built entirely from scratch following the teaching material, with every capability and mechanism traceable to the official `packages/*/src`.
-2. **A starting point for Python developers to build their own agent harness**: different branches correspond to different build stages, ready to fork into your own agent harness.
+1. **Minidsh is a standalone agent harness itself**: powered by the Cordis plugin container, every capability — session, loop, LLM, tools, skills, subagents, compaction, token metering, approval, web retrieval — is a pluggable plugin. You can use it as a daily coding agent, or compose it into your own Python project.
+2. **Aligned with teaching, mechanism by mechanism**: companion teaching repository [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy); this implementation is built entirely from scratch following the teaching material, with every capability and mechanism traceable to the official `packages/*/src`.
+3. **A starting point for Python developers to build their own agent harness**: different branches correspond to different build stages, ready to fork into your own agent harness.
 
 Construction principles: [docs/PRINCIPLES.md](docs/PRINCIPLES.md).
 
