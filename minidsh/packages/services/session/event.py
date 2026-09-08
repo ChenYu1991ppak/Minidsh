@@ -34,6 +34,8 @@ class SessionEventType(str, Enum):
     SESSION_TITLE = "session/title"        # 会话标题快照（M7，latest-wins）
     APPROVAL_ASKED = "approval/asked"      # 审批请求发出（审计日志）
     APPROVAL_DECIDED = "approval/decided"  # 审批结果（审计日志）
+    TODO_UPDATE = "todo-update"              # 任务列表更新（审计日志，surface=False）
+    USER_QUESTION = "user-question"          # 向用户提问（审计日志，surface=False）
     ERROR = "error"                        # 错误
 
 
@@ -47,6 +49,8 @@ AUDIT_TYPES: frozenset[str] = frozenset({
     "turn/start",
     "turn/end",
     "session/title",
+    "todo-update",
+    "user-question",
 })
 
 

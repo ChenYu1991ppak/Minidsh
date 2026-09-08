@@ -14,7 +14,7 @@ def test_load_builtin_base_bundle():
     bundle = load_bundle(BUILTIN_BUNDLE_NAME)
     assert bundle is not None
     assert bundle.name == "minidsh.base"
-    assert len(bundle.plugins) == 29  # 内置 base 有 29 个插件（含 P0 新增）
+    assert len(bundle.plugins) == 35  # 内置 base 有 35 个插件（含 P0 新增 6 个工具）
     names = [r.name for r in bundle.plugins]
     assert names[0] == "minidsh.config"
     assert "minidsh.persistence-jsonl" in names
@@ -22,6 +22,9 @@ def test_load_builtin_base_bundle():
     assert "minidsh.subprocess" in names
     assert "minidsh.web" in names
     assert "minidsh.tool-lsp" in names
+    assert "minidsh.tool-write" in names
+    assert "minidsh.tool-glob" in names
+    assert "minidsh.tool-todo" in names
 
 
 def test_load_unknown_bundle_returns_none():
@@ -39,7 +42,7 @@ def test_bundle_is_frozen_entity():
 
 def test_default_profile_is_base():
     merged = resolve_profile(None)
-    assert len(merged) == 29
+    assert len(merged) == 35
     assert merged[0].name == "minidsh.config"
 
 
@@ -56,7 +59,7 @@ def test_custom_profile_with_base_only(tmp_path, monkeypatch):
         "bundles:\n  - minidsh.base\n", encoding="utf-8"
     )
     merged = resolve_profile(profile="demo")
-    assert len(merged) == 29
+    assert len(merged) == 35
 
 
 def test_custom_profile_unknown_bundle_warns_and_continues(tmp_path, monkeypatch, capsys):
@@ -66,25 +69,25 @@ def test_custom_profile_unknown_bundle_warns_and_continues(tmp_path, monkeypatch
         "bundles:\n  - minidsh.base\n  - ghost-bundle\n", encoding="utf-8"
     )
     merged = resolve_profile(profile="demo")
-    assert len(merged) == 29
+    assert len(merged) == 35
     assert "ghost-bundle" in capsys.readouterr().err
 
 
 def test_missing_profile_returns_default(tmp_path, monkeypatch):
     monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
     merged = resolve_profile(profile="nonexistent")
-    assert len(merged) == 29
+    assert len(merged) == 35
 
 
 def test_profile_plugins_accumulate(tmp_path, monkeypatch):
-    """profile 自己写 plugins → 追加到 base（累加语义，非覆盖）。"""
+    """通过 --profile 路径显式指定 profile，plugins 追加到 base（累加语义，非覆盖）。"""
     monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
     (tmp_path / "profile.yaml").write_text(
         "plugins:\n  - my-extra\n", encoding="utf-8"
     )
-    merged = resolve_profile(None)
+    merged = resolve_profile(argv_path=str(tmp_path / "profile.yaml"))
     names = [r.name for r in merged]
-    assert len(merged) == 30  # 29 + my-extra
+    assert len(merged) == 36  # 35 + my-extra
     assert names[-1] == "my-extra"
 
 
@@ -98,7 +101,7 @@ def test_loader_uses_profile_not_hardcoded_bundles():
     src = open(loader.__file__, encoding="utf-8").read()
     assert "resolve_profile" in src
     entries = loader._profile_plugins(None, None, None, quiet=False)
-    assert len(entries) == 29
+    assert len(entries) == 35
 
 
 def test_loader_quiet_removes_trace_render():
@@ -107,4 +110,4 @@ def test_loader_quiet_removes_trace_render():
     entries = loader._profile_plugins(None, None, None, quiet=True)
     names = [r.name for r in entries]
     assert "minidsh.trace-render" not in names
-    assert len(entries) == 28
+    assert len(entries) == 34

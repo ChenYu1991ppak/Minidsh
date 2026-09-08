@@ -21,6 +21,7 @@ from ..definition import (
     TOOL_CALL,
     TOOL_CALL_UPDATE,
     USAGE_UPDATE,
+    USER_QUESTION_UPDATE,
 )
 from .transport import (
     read_request,
@@ -85,6 +86,9 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         if t == "reasoning-chunk":
             return {"sessionUpdate": AGENT_THOUGHT_CHUNK,
                     "content": {"type": "text", "text": p.get("text", "")}}
+        if t == "user-question":
+            return {"sessionUpdate": USER_QUESTION_UPDATE,
+                    "questions": p.get("questions", [])}
         if t == "assistant-message":
             usage = p.get("usage")
             if not usage:

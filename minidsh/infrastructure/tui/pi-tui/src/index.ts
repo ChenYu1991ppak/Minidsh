@@ -142,6 +142,7 @@ function transcript(width: number): string[] {
 class InputArea implements Component, Focusable {
   focused: boolean = false;
   input: Input;
+  private _onExit: (() => void) | null = null;
 
   constructor() {
     this.input = new Input({ placeholder: "Type a message… (/exit to quit)" });
@@ -150,11 +151,19 @@ class InputArea implements Component, Focusable {
     };
   }
 
+  setOnExit(fn: () => void): void {
+    this._onExit = fn;
+  }
+
   private _handleSubmit(text: string): void {
     if (!text.trim()) return;
     if (text.trim() === "/exit" || text.trim() === "/quit") {
-      acp.stop();
-      process.exit(0);
+      if (this._onExit) {
+        this._onExit();
+      } else {
+        process.exit(0);
+      }
+      return;
     }
     state.addUserMessage(text.trim());
     acp.sessionPrompt(state.sessionId!, text.trim()).catch((err) => {
@@ -266,6 +275,13 @@ async function main(): Promise<void> {
       return { consume: true };
     }
     return undefined;
+  });
+
+  // /exit 优雅退出：先停 TUI（恢复终端模式），再停 ACP，最后退出进程
+  inputArea.setOnExit(() => {
+    tui.stop();
+    acp.stop();
+    process.exit(0);
   });
 
   tui.start();

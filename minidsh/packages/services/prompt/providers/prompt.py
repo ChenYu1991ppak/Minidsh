@@ -16,7 +16,7 @@ class LocalSystemPromptService(SystemPromptService, CapabilityProvider):
         self._sections: list = []
 
     def section(self, name: str, text: str, order: int = 0):
-        from packages.services.prompt.definition import PromptSection
+        from minidsh.packages.services.prompt.definition import PromptSection
 
         entry = PromptSection(name, order, text)
 

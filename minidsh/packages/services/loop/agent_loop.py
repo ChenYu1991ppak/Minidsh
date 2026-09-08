@@ -227,6 +227,14 @@ class ReactLoopAgent:
             reasoning = "".join(reasoning_parts)
             if tool_calls:
                 await self._execute_tools(tool_calls, reasoning=reasoning)
+                # ask_user_question 兜底：执行后立即结束 turn（不等待模型继续思考）
+                if any(c.name == "ask_user_question" for c in tool_calls):
+                    self._turn_reason = "asked"
+                    self.session.append(
+                        "assistant-message",
+                        {"content": "", "stop_reason": "asked", "chunk_seqs": [], "usage": None},
+                    )
+                    return
                 continue  # 下一模型 turn：工具结果已进消息历史
 
             # 无工具调用 → 文本收尾，产出聚合回复（= 持久化 flush 边界）

@@ -127,7 +127,7 @@ class ApprovalService(CapabilityDefinition):
         中间件式瀑布：每个应答者返回 outcome 或调 ``next()`` 委托下一应答者。
         第一个非 None 结果占据决策槽位；全部委托 → ``unavailable``。
         """
-        from cordis.symbols import Symbols
+        from minidsh.cordis.symbols import Symbols
 
         listeners = list(getattr(self.ctx, Symbols.events).get("approval/request", []))
 

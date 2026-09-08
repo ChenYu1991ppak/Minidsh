@@ -13,6 +13,12 @@ plugins:
   - minidsh.fs-local
   - minidsh.tool-bash
   - minidsh.tool-read
+  - minidsh.tool-write
+  - minidsh.tool-edit
+  - minidsh.tool-glob
+  - minidsh.tool-grep
+  - minidsh.tool-todo
+  - minidsh.tool-ask-user
   - minidsh.skills
   - minidsh.subagents
   - minidsh.agents

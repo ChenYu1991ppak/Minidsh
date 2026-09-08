@@ -233,7 +233,7 @@ class ToolRuntime(CapabilityProvider):
         effect 归属 scope_ctx 的 fiber（scope.dispose 时自动撤回），层由
         ``scopeOf(scope_ctx)`` 选定。
         """
-        from packages.core.scope import scopeOf
+        from minidsh.packages.core.scope import scopeOf
 
         name = definition.name
 

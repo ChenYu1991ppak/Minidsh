@@ -12,7 +12,7 @@ from __future__ import annotations
 from minidsh.cordis import CapabilityDefinition
 
 __all__ = ["AcpServer", "SESSION_UPDATE", "USAGE_UPDATE", "TOOL_CALL", "TOOL_CALL_UPDATE",
-           "AGENT_MESSAGE_CHUNK", "AGENT_THOUGHT_CHUNK"]
+           "AGENT_MESSAGE_CHUNK", "AGENT_THOUGHT_CHUNK", "USER_QUESTION_UPDATE"]
 
 # ACP session/update 类型常量（对齐官方 updates.ts）
 AGENT_MESSAGE_CHUNK = "agent_message_chunk"
@@ -20,6 +20,7 @@ AGENT_THOUGHT_CHUNK = "agent_thought_chunk"
 TOOL_CALL = "tool_call"
 TOOL_CALL_UPDATE = "tool_call_update"
 USAGE_UPDATE = "usage_update"
+USER_QUESTION_UPDATE = "user_question_update"
 
 # 自定义扩展（非标准 ACP）：模型/思考强度切换
 SESSION_UPDATE = "session_update"

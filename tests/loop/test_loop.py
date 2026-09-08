@@ -10,6 +10,7 @@ from minidsh.packages.services.session import SessionStore
 from minidsh.infrastructure.config import Config
 from minidsh.packages.services.tool_runtime import ToolRuntime
 from minidsh.packages.tools import bash as tool_bash
+from minidsh.packages.tools import ask_user_question as tool_ask_user
 from tests.helpers.world import plug_execution_world
 
 from tests.helpers.fake_llm import make_fake_llm
@@ -326,3 +327,33 @@ async def test_session_title_skipped_by_derive_messages():
     msgs = derive_messages(events)
     assert len(msgs) == 1
     assert msgs[0]["role"] == "user"
+
+
+# ---------- ask_user_question 兜底断 react ----------
+
+
+async def test_ask_user_question_breaks_react_loop():
+    """ask_user_question 工具执行后 react 循环立即结束（不继续文本轮）。"""
+    ctx, loop = _assemble([{"tool_calls": [(
+        "ask_user_question",
+        '{"questions": [{"question": "Color?", "header": "C", "options": [{"label": "Red", "description": "desc"}]}]}',
+        "call-0",
+    )]}])
+    # 注册 ask_user_question 工具（_assemble 只注册了 bash）
+    ctx.plugin(tool_ask_user)
+    agent = loop.create()
+    agent.send("问个问题")
+
+    await agent.run()
+
+    types = [e.type for e in agent.session]
+    # turn/start → user-message → session/title → tool-call → tool-result
+    # → assistant-message（由 loop 兜底产）→ turn/end（reason=asked）
+    # 不应有后续的模型文本回复
+    assert "user-question" in types
+    assert "assistant-message" in types
+    # turn/end reason 应为 "asked"（非 "completed"）
+    te = [e for e in agent.session if e.type == "turn/end"][-1]
+    assert te.payload["reason"]["kind"] == "asked"
+    # 不应有第二轮模型迭代（无 assistant-chunk）
+    assert "assistant-chunk" not in types

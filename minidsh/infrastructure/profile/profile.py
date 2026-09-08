@@ -100,31 +100,24 @@ def resolve_profile(
 ) -> list[PluginRef]:
     """解析覆盖链，返回最终 plugins 名单（累加 + remove 已应用）。
 
-    覆盖链：
+    覆盖链（全部显式指定，无隐式加载）：
       1. 默认 bundles=[minidsh.base]
-      2. 命名 profile（若 profile 给的是「名字」）
-      3. 项目 <project>/.minidsh/profile.yaml
-      4. 用户 ~/.minidsh/profile.yaml
-      5. argv（--profile 给「路径」时，作为最高覆盖层）
+      2. 命名 profile（若 profile 给的是「名字」→ ~/.minidsh/profiles/<name>.yaml）
+      3. argv（--profile 给「路径」时，作为最高覆盖层）
 
     - bundles 覆盖：取「最后写 bundles 的那层」的非 base 部分 + [minidsh.base]。
     - plugins 累加：跨层同名替换、不同名追加。
     - remove 全局删。
     - ``extra_bundles``：额外 bundle 名，追加到 base 之后（如 ``tui`` 前端 bundle）。
+    - 项目级和用户级配置不再隐式加载；需通过 ``bundles`` 或 ``--profile`` 显式指定。
     """
     from minidsh.infrastructure.config.files import user_config_dir
 
     layers: list[dict] = []
-    # 命名 profile
+    # 命名 profile（显式指定）
     if profile is not None and not Path(profile).exists():
         layers.append(_parse_profile_file(profile_path(profile)))
-    # 项目
-    if project_dir is not None:
-        layers.append(_parse_profile_file(Path(project_dir) / ".minidsh" / "profile.yaml"))
-    # 用户
-    home = Path(user_home) if user_home else user_config_dir()
-    layers.append(_parse_profile_file(home / "profile.yaml"))
-    # argv
+    # argv（--profile 给路径时，显式指定）
     if argv_path is not None:
         layers.append(_parse_profile_file(Path(argv_path)))
 
