@@ -134,3 +134,28 @@ async def test_fs_edit_text_no_match_unchanged(tmp_path):
     result = await svc.edit_text(str(f), "xyz", "abc", replace_all=False)
     assert result == "hello world"  # 无替换，原文不变
     assert f.read_text() == "hello world"
+
+
+async def test_fs_write_text_creates_parent_dirs(tmp_path):
+    """write_text 自动创建父目录。"""
+    from minidsh.cordis import Context
+    from minidsh.packages.services.fs.providers.local import LocalFsService
+
+    ctx = Context()
+    svc = LocalFsService(ctx)
+    f = tmp_path / "deep" / "nested" / "out.txt"
+    await svc.write_text(str(f), "hello")
+    assert f.read_text() == "hello"
+
+
+async def test_fs_edit_text_creates_file_if_not_exists(tmp_path):
+    """edit_text 对不存在的文件：创建并写入 new_string。"""
+    from minidsh.cordis import Context
+    from minidsh.packages.services.fs.providers.local import LocalFsService
+
+    ctx = Context()
+    svc = LocalFsService(ctx)
+    f = tmp_path / "new" / "file.txt"
+    result = await svc.edit_text(str(f), "old", "new", replace_all=False)
+    assert result == "new"
+    assert f.read_text() == "new"

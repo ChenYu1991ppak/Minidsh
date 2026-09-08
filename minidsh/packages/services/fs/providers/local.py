@@ -5,6 +5,8 @@
 """
 from __future__ import annotations
 
+import os
+
 from ..definition import FsRequest, FsResult, FsService
 from minidsh.cordis import CapabilityProvider
 
@@ -24,6 +26,7 @@ class LocalFsService(FsService, CapabilityProvider):
 
     async def write_text(self, path: str, content: str) -> None:
         """写入文本文件（覆盖已有）。[教学简化] 无原子写入、无 fsync。"""
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
 
@@ -34,12 +37,22 @@ class LocalFsService(FsService, CapabilityProvider):
         ``replace_all=True`` 替换所有匹配项；默认仅替换第一个。
         [教学简化] 无 diff 展示、无 ambiguous-edit 检测。
         """
-        with open(path, encoding="utf-8") as f:
-            text = f.read()
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        try:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+        except FileNotFoundError:
+            text = ""
         if replace_all:
             new_text = text.replace(old_string, new_string)
         else:
             new_text = text.replace(old_string, new_string, 1)
+        if not text and not new_text:
+            # 文件不存在：当作创建新文件，直接写入 new_string
+            new_text = new_string
+        if not text and not new_text:
+            # 文件不存在：当作创建新文件，直接写入 new_string
+            new_text = new_string
         with open(path, "w", encoding="utf-8") as f:
             f.write(new_text)
         return new_text
