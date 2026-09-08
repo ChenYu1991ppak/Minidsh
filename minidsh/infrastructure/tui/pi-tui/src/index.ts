@@ -207,9 +207,9 @@ async function main(): Promise<void> {
   const init = await acp.initialize();
   console.error(`[pi-tui] ACP v${init.protocolVersion} ready`);
 
-  const { sessionId } = await acp.sessionNew();
+  const { sessionId, resumed } = await acp.sessionLatest();
   state.reset(sessionId);
-  console.error(`[pi-tui] session ${sessionId}`);
+  console.error(`[pi-tui] session ${sessionId}${resumed ? " (resumed)" : ""}`);
 
   const terminal = new ProcessTerminal();
   const tui = new TuiMainScreen(terminal);

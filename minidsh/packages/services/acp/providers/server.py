@@ -155,6 +155,8 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
             write_response(message_id, {})
         elif method == "session/new":
             write_response(message_id, self._new_session(params))
+        elif method == "session/latest":
+            write_response(message_id, self._latest_session())
         elif method == "session/set_config_option":
             self._set_config_option(params, message_id)
         elif method == "session/prompt":
@@ -183,6 +185,20 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         agent = loop.create()
         self._sessions[agent.session.id] = agent
         return {"sessionId": agent.session.id}
+
+    def _latest_session(self) -> dict:
+        """恢复最近一次会话（按 mtime），无历史会话则创建新会话。"""
+        persistence = getattr(self.ctx, "sessionPersistence", None)
+        if persistence is not None:
+            sid = persistence.latest()
+            if sid is not None:
+                events = persistence.load(sid)
+                loop = self.ctx.agent_loop
+                agent = loop.resume(sid, events=events)
+                self._sessions[agent.session.id] = agent
+                return {"sessionId": agent.session.id, "resumed": True}
+        # 回退：无持久化后端或无历史 → 创建新会话
+        return self._new_session({})
 
     def _set_config_option(self, params: dict, message_id: Any) -> None:
         """设置会话配置项（model / reasoning_effort）。

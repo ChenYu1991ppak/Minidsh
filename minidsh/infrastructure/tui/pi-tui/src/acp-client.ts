@@ -145,6 +145,10 @@ export class AcpClient extends EventEmitter {
     return this._request("session/new") as Promise<SessionNewResult>;
   }
 
+  async sessionLatest(): Promise<SessionNewResult & { resumed?: boolean }> {
+    return this._request("session/latest") as Promise<SessionNewResult & { resumed?: boolean }>;
+  }
+
   async sessionPrompt(sessionId: string, text: string): Promise<PromptResult> {
     return this._request("session/prompt", { sessionId, text }) as Promise<PromptResult>;
   }
