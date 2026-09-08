@@ -28,27 +28,30 @@ DEFAULT_BUNDLES = [BUILTIN_BUNDLE_NAME]
 def _expand_bundles(bundle_names: list[str]) -> list[str]:
     """展开 bundle 依赖图：每个 bundle 可声明 ``bundles:`` 依赖，递归展开。
 
-    返回拓扑序列表（依赖在前，base 排最前）。
+    返回拓扑序列表（依赖在前，base 排最前）。短名（如 base/tui）自动归一为 minidsh.xxx。
     """
     seen: set[str] = set()
     result: list[str] = []
-    # 确保 base 总是最先加载
-    if BUILTIN_BUNDLE_NAME not in seen:
-        seen.add(BUILTIN_BUNDLE_NAME)
-        result.append(BUILTIN_BUNDLE_NAME)
+
+    def _normalize(name: str) -> str:
+        return name if name.startswith("minidsh.") else f"minidsh.{name}"
 
     def _walk(name: str):
-        if name in seen:
+        key = _normalize(name)
+        if key in seen:
             return
-        seen.add(name)
-        bundle = load_bundle(name)
+        seen.add(key)
+        bundle = load_bundle(key)
         if bundle is not None:
             for dep in bundle.bundles:
                 _walk(dep)
-        result.append(name)
+        result.append(key)
 
     for name in bundle_names:
         _walk(name)
+    # 确保 base 总是最先加载
+    if BUILTIN_BUNDLE_NAME not in seen:
+        result.insert(0, BUILTIN_BUNDLE_NAME)
     return result
 
 
