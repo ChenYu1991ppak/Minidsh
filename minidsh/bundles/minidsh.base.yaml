@@ -30,6 +30,7 @@ plugins:
   - minidsh.approval
   - minidsh.web
   - minidsh.web-fetch
+  - minidsh.web-search-ddg
   - minidsh.tool-web
   - minidsh.lsp
   - minidsh.tool-lsp

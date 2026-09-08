@@ -852,3 +852,165 @@ def test_resolve_public_addresses_dns_failure(monkeypatch):
     with pytest.raises(WebError) as ei:
         resolve_public_addresses("nonexistent.invalid")
     assert ei.value.code == "WEB_PROVIDER_ERROR"
+
+
+# ---------------------------------------------------------------------------
+# DdgSearchProvider
+# ---------------------------------------------------------------------------
+
+
+def test_ddg_parse_html_extracts_results():
+    """_parse_ddg_html 从 DuckDuckGo lite HTML 中提取结构化结果。"""
+    from minidsh.packages.services.web.providers.search_ddg import _parse_ddg_html
+
+    html = """
+    <html><body>
+    <a rel="nofollow" class="result-link" href="https://example.com">Example Title</a>
+    <span class="result-snippet">This is a snippet about example.</span>
+    <a rel="nofollow" class="result-link" href="https://other.com">Other Title</a>
+    <span class="result-snippet">Another snippet.</span>
+    </body></html>
+    """
+    sources = _parse_ddg_html(html)
+    assert len(sources) == 2
+    assert sources[0].url == "https://example.com"
+    assert sources[0].title == "Example Title"
+    assert sources[0].snippet == "This is a snippet about example."
+    assert sources[1].url == "https://other.com"
+
+
+def test_ddg_parse_html_empty():
+    from minidsh.packages.services.web.providers.search_ddg import _parse_ddg_html
+    assert _parse_ddg_html("") == []
+    assert _parse_ddg_html("<html></html>") == []
+
+
+async def test_ddg_search_with_fake_client():
+    """DdgSearchProvider 用假 HTTP 客户端返回搜索结果。"""
+    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, headers=None):
+            return _FakeResponse(200, {"content-type": "text/html"},
+                                 b'<a rel="nofollow" class="result-link" href="https://a.com">A</a>'
+                                 b'<span class="result-snippet">snippet a</span>')
+
+    provider = DdgSearchProvider(client_factory=lambda **kw: _FakeClient())
+    result = await provider.search(WebSearchRequest(query="test"))
+    assert len(result.sources) == 1
+    assert result.sources[0].url == "https://a.com"
+    assert result.sources[0].title == "A"
+
+
+async def test_ddg_search_timeout():
+    import httpx as _httpx
+    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+
+    class _TimeoutClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, headers=None):
+            raise _httpx.TimeoutException("timed out")
+
+    provider = DdgSearchProvider(client_factory=lambda **kw: _TimeoutClient())
+    with pytest.raises(WebError) as ei:
+        await provider.search(WebSearchRequest(query="test"))
+    assert ei.value.code == "WEB_SEARCH_TIMEOUT"
+
+
+async def test_ddg_search_http_error():
+    import httpx as _httpx
+    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+
+    class _ErrClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, headers=None):
+            raise _httpx.ConnectError("conn refused")
+
+    provider = DdgSearchProvider(client_factory=lambda **kw: _ErrClient())
+    with pytest.raises(WebError) as ei:
+        await provider.search(WebSearchRequest(query="test"))
+    assert ei.value.code == "WEB_PROVIDER_ERROR"
+
+
+async def test_ddg_search_non_200():
+    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, headers=None):
+            return _FakeResponse(500, {}, b"error")
+
+    provider = DdgSearchProvider(client_factory=lambda **kw: _FakeClient())
+    with pytest.raises(WebError) as ei:
+        await provider.search(WebSearchRequest(query="test"))
+    assert ei.value.code == "WEB_PROVIDER_ERROR"
+
+
+async def test_ddg_search_with_tool_web():
+    """tool-web 的 web_search 经 DdgSearchProvider 正常返回结构化结果。"""
+    ctx = _tool_ctx()
+    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, headers=None):
+            return _FakeResponse(200, {"content-type": "text/html"},
+                                 b'<a rel="nofollow" class="result-link" href="https://a.com">A</a>'
+                                 b'<span class="result-snippet">desc</span>')
+
+    ctx.web.register_search_provider(DdgSearchProvider(client_factory=lambda **kw: _FakeClient()))
+    execute = ctx.tools.get("web_search").execute
+    value = await execute({"queries": ["test"]})
+    assert value["available"] is True
+    assert value["sources"][0]["url"] == "https://a.com"
+    assert value["sources"][0]["title"] == "A"
+
+
+async def test_ddg_search_renders_via_runtime():
+    """经 ToolRuntime.execute 全链路：web_search + DdgSearchProvider 渲染正常。"""
+    ctx = _tool_ctx()
+    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, headers=None):
+            return _FakeResponse(200, {"content-type": "text/html"},
+                                 b'<a rel="nofollow" class="result-link" href="https://x.com">X</a>'
+                                 b'<span class="result-snippet">s</span>')
+
+    ctx.web.register_search_provider(DdgSearchProvider(client_factory=lambda **kw: _FakeClient()))
+    result = await ctx.tools.execute(ToolExecution(call_id="c", name="web_search",
+                                                   arguments={"queries": ["x"]}))
+    assert result.is_error is False
+    assert "[X](https://x.com)" in result.content
