@@ -6,7 +6,7 @@ English | [中文](README_zh.md)
 
 > DeepSeek Harness (dsh) is an AI agent framework. This is its Python twin — same architecture, minimal cut, ready to run. [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) is the companion tutorial that explains every mechanism.
 
-![Pydsh Architecture](assets/pydsh.png)
+![pydsh architecture](assets/pydsh.png)
 
 ## Who Should Use This
 
@@ -169,6 +169,36 @@ pydsh --profile my [./project]
 5. **ask-user** — user-question tool
 6. **terminal** — PTY terminal tool
 7. **workflow + mcp** — multi-agent orchestration + MCP protocol
+
+## Architecture Comparison
+
+### pydsh vs Official dsh (DeepSeek Harness)
+
+| Dimension | pydsh | Official dsh |
+|---|---|---|
+| Language | Python | TypeScript |
+| Codebase size | ~400-line kernel, single package | 40+ packages |
+| Kernel | Synchronous, single-threaded | Asynchronous, multi-threaded |
+| Plugin system | Cordis container (Context/Fiber/Service/events) | `@deepseek-ai/cordis` |
+| Agent loop | React-style (stream → tools → backfill → settle) | Same |
+| Session persistence | JSONL + SQLite, append-only event log | Same |
+| LLM support | DeepSeek, Kimi, Qwen, GPT (soft-mapping layer) | DeepSeek + extendable |
+| Tools | bash, read_file, web search/fetch, LSP | Full tool suite |
+| Frontend | pi-tui (Node.js, ACP JSON-RPC) | dsh-tui |
+| Complexity | Minimal, educational | Production-grade, full-featured |
+| Best for | Learning, prototyping, Python-native projects | Production use, TypeScript ecosystems |
+
+### pydsh vs Other Agent Frameworks
+
+| Dimension | pydsh | LangChain | CrewAI |
+|---|---|---|---|
+| Philosophy | Everything is a plugin | Chain composition | Role-based agents |
+| Plugin system | Cordis container (seam triple-role) | LangChain plugins | Limited |
+| Agent loop | Built-in react loop | Custom chains | Built-in |
+| Token metering | Real provider-returned usage | Estimates | Estimates |
+| Context compaction | Built-in (prune/summarize) | External | External |
+| Learning curve | Low (minimal, educational) | High (many abstractions) | Medium |
+| Size | ~400-line kernel | 100k+ lines | 10k+ lines |
 
 ## License
 

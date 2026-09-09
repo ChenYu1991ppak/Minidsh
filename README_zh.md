@@ -6,7 +6,7 @@
 
 > DeepSeek Harness（dsh）是一个 AI agent 框架。这是它的 Python 镜像——同样架构，最小化裁剪，开箱即用。[deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) 是配套教程，逐机制解释一切。
 
-![Pydsh 架构图](assets/pydsh.png)
+![pydsh 架构图](assets/pydsh.png)
 
 ## 谁该用这个
 
@@ -169,6 +169,36 @@ pydsh --profile my [./project]
 5. **ask-user** — 用户提问工具
 6. **terminal** — PTY 终端工具
 7. **workflow + mcp** — 多 agent 编排 + MCP 协议
+
+## 架构对比
+
+### pydsh vs 官方 dsh（DeepSeek Harness）
+
+| 维度 | pydsh | 官方 dsh |
+|---|---|---|
+| 语言 | Python | TypeScript |
+| 代码规模 | ~400 行内核，单包 | 40+ 包 |
+| 内核 | 同步单线程 | 异步多线程 |
+| 插件系统 | Cordis 容器（Context/Fiber/Service/事件） | `@deepseek-ai/cordis` |
+| Agent 循环 | React 风格（流式 → 工具 → 回填 → 收尾） | 相同 |
+| 会话持久化 | JSONL + SQLite，append-only 事件日志 | 相同 |
+| LLM 支持 | DeepSeek、Kimi、Qwen、GPT（软映射层） | DeepSeek + 可扩展 |
+| 工具 | bash、read_file、web search/fetch、LSP | 完整工具套件 |
+| 前端 | pi-tui（Node.js，ACP JSON-RPC） | dsh-tui |
+| 复杂度 | 极简，教学导向 | 生产级，全功能 |
+| 最适合 | 学习、原型、Python 原生项目 | 生产环境、TypeScript 生态 |
+
+### pydsh vs 其他 Agent 框架
+
+| 维度 | pydsh | LangChain | CrewAI |
+|---|---|---|---|
+| 哲学 | 一切皆插件 | 链式组合 | 角色式 agent |
+| 插件系统 | Cordis 容器（seam 三角色） | LangChain 插件 | 有限 |
+| Agent 循环 | 内置 react 循环 | 自定义链 | 内置 |
+| Token 计量 | 真实 provider 回传用量 | 估算 | 估算 |
+| 上下文压缩 | 内置（prune/summarize） | 外部 | 外部 |
+| 学习曲线 | 低（极简，教学导向） | 高（大量抽象） | 中 |
+| 规模 | ~400 行内核 | 10 万+ 行 | 1 万+ 行 |
 
 ## License
 
