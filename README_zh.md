@@ -6,7 +6,7 @@
 
 > DeepSeek Harness（dsh）是一个 AI agent 框架。这是它的 Python 镜像——同样架构，最小化裁剪，开箱即用。[deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) 是配套教程，逐机制解释一切。
 
-![MiniDsh 架构图](assets/minidsh-architecture.png)
+![MiniDsh 架构图](assets/minidsh-architecture.html)
 
 ## 谁该用这个
 
