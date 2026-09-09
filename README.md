@@ -6,7 +6,7 @@ English | [中文](README_zh.md)
 
 > DeepSeek Harness (dsh) is an AI agent framework. This is its Python twin — same architecture, minimal cut, ready to run. [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) is the companion tutorial that explains every mechanism.
 
-![Pydsh Architecture](assets/pydsh-architecture.html)
+![Pydsh Architecture](assets/pydsh-architecture.png)
 
 ## Who Should Use This
 
