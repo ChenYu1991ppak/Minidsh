@@ -36,6 +36,7 @@ export interface QuestionData {
 
 export class SessionState {
   sessionId: string | null = null;
+  sessionTitle: string | null = null;
   model = "?";
   effort = "?";
   /** Single ordered timeline: thoughts, messages, and tool cards interleaved by arrival. */
@@ -47,8 +48,13 @@ export class SessionState {
 
   reset(sessionId: string): void {
     this.sessionId = sessionId;
+    this.sessionTitle = null;
     this.items = [];
     this.pendingQuestion = null;
+  }
+
+  setTitle(title: string): void {
+    this.sessionTitle = title;
   }
 
   /** Append to the tail item when it is an assistant thought; else push a new one. */

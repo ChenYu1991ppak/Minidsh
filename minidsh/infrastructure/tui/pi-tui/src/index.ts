@@ -94,7 +94,8 @@ function statusBar(width: number): string[] {
   const pct = usage?.used && usage?.size
     ? ` ${Math.round(usage.used / usage.size * 100)}% (${usage.used}/${usage.size})`
     : "";
-  const line = ` mini-dsh  ${state.model}(${state.effort})${pct}  ${state.sessionId ?? "connecting..."}`;
+  const label = state.sessionTitle || state.sessionId || "connecting...";
+  const line = ` mini-dsh  ${state.model}(${state.effort})${pct}  ${label}`;
   return [truncateToWidth(line, width)];
 }
 

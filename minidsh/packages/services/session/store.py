@@ -108,7 +108,20 @@ class SessionStore:
     def __init__(self, ctx):
         self.ctx = ctx
         self._sessions: dict[str, Session] = {}
-        self._next_id = 0
+        # 从持久化后端恢复最大序号，确保新会话不与被持久化的旧会话碰撞
+        self._next_id = self._max_persisted_id()
+
+    def _max_persisted_id(self) -> int:
+        """扫描持久化后端，取最大 session 序号。无后端或无历史 → 0。"""
+        backend = getattr(self.ctx, "_persistence_backend", None)
+        if backend is None:
+            return 0
+        max_n = 0
+        for sid in backend.list():
+            n = _parse_session_number(sid)
+            if n > max_n:
+                max_n = n
+        return max_n
 
     def create(self, meta: dict | None = None) -> Session:
         """创建一个新会话并登记。session_id = "session-0001" 式自增，跳过已占用的编号。"""

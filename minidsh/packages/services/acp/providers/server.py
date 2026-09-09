@@ -207,7 +207,7 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         loop = self.ctx.agent_loop
         agent = loop.create()
         self._sessions[agent.session.id] = agent
-        return {"sessionId": agent.session.id}
+        return {"sessionId": agent.session.id, "title": None}
 
     def _latest_session(self) -> dict:
         """恢复最近一次会话（按 mtime），无历史会话则创建新会话。"""
@@ -220,7 +220,7 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
                     loop = self.ctx.agent_loop
                     agent = loop.resume(sid, events=events)
                     self._sessions[agent.session.id] = agent
-                    return {"sessionId": agent.session.id, "resumed": True}
+                    return {"sessionId": agent.session.id, "resumed": True, "title": None}
         # 回退：无持久化后端或无历史 → 创建新会话
         return self._new_session({})
 
@@ -299,7 +299,7 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         write_response(message_id, {})
 
     def _list_sessions(self) -> list[dict]:
-        """列出所有已持久化的会话（session id + 时间戳）。"""
+        """列出所有已持久化的会话（session id + 标题 + 时间戳）。"""
         backend = getattr(self.ctx, "_persistence_backend", None)
         if backend is None:
             return []
@@ -307,14 +307,34 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         result = []
         for sid in session_ids:
             entry = {"id": sid}
-            # 尝试读 mtime
+            # 尝试读标题：从 session/title 事件取最后一个
+            title = self._read_session_title(sid)
+            if title:
+                entry["title"] = title
+            # 读 mtime
             path = backend.log_path(sid) if hasattr(backend, "log_path") else None
             if path and path.exists():
                 import datetime
                 ts = path.stat().st_mtime
                 entry["updatedAt"] = datetime.datetime.fromtimestamp(ts).isoformat()
             result.append(entry)
+        # 按更新时间倒序（最近在前）
+        result.sort(key=lambda e: e.get("updatedAt", ""), reverse=True)
         return result
+
+    def _read_session_title(self, session_id: str) -> str | None:
+        """从持久化事件中读取会话标题（最后一个 session/title 事件）。"""
+        backend = getattr(self.ctx, "_persistence_backend", None)
+        if backend is None:
+            return None
+        events = backend.load_stored(session_id)
+        if not events:
+            return None
+        title = None
+        for ev in events:
+            if ev.type == "session/title":
+                title = ev.payload.get("title")
+        return title
 
     def _resume_session(self, params: dict) -> dict:
         """恢复一个持久会话。"""
