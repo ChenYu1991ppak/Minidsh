@@ -305,7 +305,7 @@ class ModelDialog {
     }
     if (matchesKey(data, Key.up)) { this.selectedIndex = Math.max(0, this.selectedIndex - 1); return true; }
     if (matchesKey(data, Key.down)) { this.selectedIndex = Math.min(this.filtered.length - 1, this.selectedIndex + 1); return true; }
-    if (data === "\t") { this.effortIdx = (this.effortIdx + 1) % this.effortLevels.length; return true; }
+    if (matchesKey(data, Key.shift(Key.tab))) { this.effortIdx = (this.effortIdx + 1) % this.effortLevels.length; return true; }
     if (matchesKey(data, Key.backspace)) { this.filter = this.filter.slice(0, -1); this.selectedIndex = 0; return true; }
     if (data.length === 1 && data >= " ") { this.filter += data; this.selectedIndex = 0; return true; }
     return false;
