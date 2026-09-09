@@ -51,3 +51,4 @@ tasks/
 deepseek-harness-anatomy/
 .history/
 .vscode/
+node_modules/
