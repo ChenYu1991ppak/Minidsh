@@ -2,7 +2,18 @@
 
 English | [中文](README_zh.md)
 
-**A minimal DeepSeek Harness (dsh)**: a Python educational reproduction of the dsh engineering skeleton, built from scratch.
+**A minimal DeepSeek Harness in Python.** Plugin loop, hooks, permissions, goals/plans — one command, zero config. A faithful educational reproduction of the dsh engineering skeleton, built from scratch.
+
+> DeepSeek Harness (dsh) is an AI agent framework. This is its Python twin — same architecture, minimal cut, ready to run. [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) is the companion tutorial that explains every mechanism.
+
+![MiniDsh Architecture](assets/minidsh-architecture.html)
+
+## Who Should Use This
+
+- **You want a Python agent harness that works today** — clone, configure an API key, run `make tui`, and you have a daily coding agent with tools, skills, subagents, and compaction
+- **You're studying agent architecture** — every mechanism is aligned to the official dsh source (`↔ packages/*/src`), with teaching simplifications explicitly marked
+- **You're building your own agent framework** — fork it as a template; the Cordis plugin container, seam triple-role pattern, and event-stream persistence are all reusable
+- **You read the companion tutorial** [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) and want to see the real thing in Python
 
 ## Project Description
 

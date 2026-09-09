@@ -2,7 +2,18 @@
 
 [English](README.md) | 中文
 
-**最小化 DeepSeek Harness（dsh）**：用 Python 从零构建的 dsh 工程骨架。
+**最小的 DeepSeek Harness，用 Python 写就。** 插件循环、hooks、权限、目标/计划——一条命令，零配置。从零构建的 dsh 工程骨架教学复刻。
+
+> DeepSeek Harness（dsh）是一个 AI agent 框架。这是它的 Python 镜像——同样架构，最小化裁剪，开箱即用。[deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) 是配套教程，逐机制解释一切。
+
+![MiniDsh 架构图](assets/minidsh-architecture.html)
+
+## 谁该用这个
+
+- **你想找一个现在就能用的 Python agent harness**——clone、配 API key、`make tui`，你就有了一日一用的编程 agent，附带工具、技能、子代理和上下文压缩
+- **你在研究 agent 架构**——每个机制都对齐官方 dsh 源码（`↔ packages/*/src`），教学简化处明确标注
+- **你在构建自己的 agent 框架**——fork 即可当模板；Cordis 插件容器、seam 三角色模式、事件流持久化全部可复用
+- **你读了配套教程** [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy)，想看看真东西在 Python 里长什么样
 
 ## 项目描述
 
