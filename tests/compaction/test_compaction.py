@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.compaction import PruneStrategy, SummarizeStrategy
-from minidsh.packages.services.compaction.definition import measure_messages
-from minidsh.packages.services.compaction.providers.compaction import BasicCompactionEngine
-from minidsh.packages.services.loop import AgentLoop
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
-from minidsh.packages.services.session import SessionStore
-from minidsh.packages.services.tool_runtime import ToolRuntime
+from pydsh.cordis import Context
+from pydsh.packages.services.compaction import PruneStrategy, SummarizeStrategy
+from pydsh.packages.services.compaction.definition import measure_messages
+from pydsh.packages.services.compaction.providers.compaction import BasicCompactionEngine
+from pydsh.packages.services.loop import AgentLoop
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.packages.services.session import SessionStore
+from pydsh.packages.services.tool_runtime import ToolRuntime
 
 from tests.helpers.fake_llm import make_fake_llm
 

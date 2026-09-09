@@ -32,7 +32,7 @@ mini-dsh uses pi-tui as its TUI frontend:
 │ Terminal (user)                                     │
 ├─────────────────────────────────────────────────────┤
 │ pi-tui frontend (Node.js)                           │
-│  ├─ acp-client.ts  ── spawn minidsh --profile acp   │
+│  ├─ acp-client.ts  ── spawn pydsh --profile acp   │
 │  ├─ session-state.ts ── local session projection    │
 │  └─ index.ts         ── pi-tui component tree       │
 ├─────────────────────────────────────────────────────┤
@@ -49,13 +49,13 @@ mini-dsh uses pi-tui as its TUI frontend:
 
 ```bash
 # 1. Install frontend dependencies
-cd /path/to/minidsh/infrastructure/tui/pi-tui && npm install && npm run build
+cd /path/to/pydsh/infrastructure/tui/pi-tui && npm install && npm run build
 
-# 2. Start (requires the minidsh Python backend installed)
-cd /path/to/project && npx tsx /path/to/minidsh/infrastructure/tui/pi-tui/src/index.ts
+# 2. Start (requires the pydsh Python backend installed)
+cd /path/to/project && npx tsx /path/to/pydsh/infrastructure/tui/pi-tui/src/index.ts
 
 # 2b. Or via the launcher (forthcoming)
-minidsh --profile tui   # auto-spawns the pi-tui frontend
+pydsh --profile tui   # auto-spawns the pi-tui frontend
 ```
 
 ## Testing

@@ -1,13 +1,13 @@
 """M3 验收测试：approval 替换 permission（ctx.approval + ask/never + waterfall）。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.approval import (
+from pydsh.cordis import Context
+from pydsh.packages.services.approval import (
     ApprovalRequest,
     ApprovalProvider,
     APPROVAL_POLICIES,
 )
-from minidsh.packages.services.session import SessionStore
+from pydsh.packages.services.session import SessionStore
 
 
 def _fake_agent(session=None):

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import types
 
-from minidsh.packages.services.llm.providers.openai import OpenAILlm
+from pydsh.packages.services.llm.providers.openai import OpenAILlm
 from .openai_fake import make_scripted_client
 
 __all__ = ["make_fake_llm"]

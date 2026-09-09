@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context, Service, ServiceNotFoundError
+from pydsh.cordis import Context, Service, ServiceNotFoundError
 
 
 # ---------- ctx.inject：严格解析 ----------

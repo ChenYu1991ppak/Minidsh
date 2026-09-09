@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context, Service
-from minidsh.packages.core.scope import createScope, scopeOf, ScopedLayers, NamedEntries
+from pydsh.cordis import Context, Service
+from pydsh.packages.core.scope import createScope, scopeOf, ScopedLayers, NamedEntries
 
 
 class _Layer:

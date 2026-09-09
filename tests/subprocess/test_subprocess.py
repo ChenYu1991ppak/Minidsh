@@ -6,15 +6,15 @@ import os
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.subprocess import (
+from pydsh.cordis import Context
+from pydsh.packages.services.subprocess import (
     CollectedOutput,
     SubprocessOutcome,
     SubprocessService,
     SubprocessSpawnSpec,
     SubprocessStdio,
 )
-from minidsh.packages.services.subprocess.providers.local import LocalSubprocessService
+from pydsh.packages.services.subprocess.providers.local import LocalSubprocessService
 
 
 def _ctx() -> tuple[Context, SubprocessService]:

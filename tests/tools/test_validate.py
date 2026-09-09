@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.packages.services.tool_runtime import ToolOutput, ToolDefinition
-from minidsh.packages.services.tool_runtime.validate import validate_schema, SchemaError
+from pydsh.packages.services.tool_runtime import ToolOutput, ToolDefinition
+from pydsh.packages.services.tool_runtime.validate import validate_schema, SchemaError
 
 
 # ---------- 轻量校验器 ----------

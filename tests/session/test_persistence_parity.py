@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.session import SessionStore
-from minidsh.packages.services.persistence import PersistenceCoordinator
-from minidsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
-from minidsh.packages.services.persistence.providers.sqlite import SqliteSessionPersistence
+from pydsh.cordis import Context
+from pydsh.packages.services.session import SessionStore
+from pydsh.packages.services.persistence import PersistenceCoordinator
+from pydsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
+from pydsh.packages.services.persistence.providers.sqlite import SqliteSessionPersistence
 
 
 def _feed_and_flush(ctx, store):
@@ -59,7 +59,7 @@ def test_sqlite_load_unknown_session_returns_none(tmp_path):
 def test_sqlite_seq_primary_key_guards_duplicate(tmp_path):
     """直接对 backend 写同 seq 两行：主键 (session_id, seq) 使后写覆盖先写。"""
     _, _, _, backend = _sqlite_harness(tmp_path)
-    from minidsh.packages.services.session import SessionEvent
+    from pydsh.packages.services.session import SessionEvent
 
     # 绕过协调器的 seq 连续校验，直接测存储层主键去重
     backend.append_batch("s", [SessionEvent("s", 0, "user-message")])

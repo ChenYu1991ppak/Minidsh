@@ -1,7 +1,7 @@
 """T2 验收测试：on / emit / serial / waterfall 语义与生命周期绑定。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
+from pydsh.cordis import Context
 
 
 # ---------- on / off ----------

@@ -10,17 +10,17 @@
 """
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.llm import OpenAILlm
-from minidsh.packages.services.loop import AgentLoop
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
-from minidsh.packages.services.session import SessionStore
-from minidsh.packages.services.persistence import PersistenceCoordinator
-from minidsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime
-from minidsh.packages.tools import bash as tool_bash
-from minidsh.packages.tools import read_file as tool_read
+from pydsh.cordis import Context
+from pydsh.packages.services.llm import OpenAILlm
+from pydsh.packages.services.loop import AgentLoop
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.packages.services.session import SessionStore
+from pydsh.packages.services.persistence import PersistenceCoordinator
+from pydsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime
+from pydsh.packages.tools import bash as tool_bash
+from pydsh.packages.tools import read_file as tool_read
 from tests.helpers.world import plug_execution_world
 
 from tests.helpers.fake_llm import make_fake_llm

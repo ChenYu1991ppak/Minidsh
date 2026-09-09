@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
-from minidsh.packages.services.lsp import (
+from pydsh.cordis import Context
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
+from pydsh.packages.services.lsp import (
     LspService,
     LspError,
     LspProvider,
@@ -24,7 +24,7 @@ from minidsh.packages.services.lsp import (
     LspRange,
     final_extension,
 )
-from minidsh.packages.services.lsp.providers.noop import NoopLspProvider
+from pydsh.packages.services.lsp.providers.noop import NoopLspProvider
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +207,7 @@ def test_noop_provider_available_false():
 
 async def test_noop_provider_registered_in_runtime():
     """runtime 插件把 noop 注册进 ctx.lsp，query 返回空（非错误）。"""
-    from minidsh.packages.services.lsp.providers import runtime as lsp_runtime
+    from pydsh.packages.services.lsp.providers import runtime as lsp_runtime
     ctx = Context()
     lsp_runtime.apply(ctx)
     req = LspQueryRequest(operation="goToDefinition", filePath="f.py",
@@ -226,7 +226,7 @@ def _tool_ctx():
     ctx.provide("config", Config())
     ToolRuntime(ctx)
     LspService(ctx)
-    from minidsh.packages.tools import lsp as tool_lsp
+    from pydsh.packages.tools import lsp as tool_lsp
     tool_lsp.apply(ctx)
     return ctx
 
@@ -272,7 +272,7 @@ async def test_tool_lsp_no_provider_degrades():
 
 async def test_tool_lsp_hover_result():
     ctx = _tool_ctx()
-    from minidsh.packages.services.lsp import LspHover
+    from pydsh.packages.services.lsp import LspHover
 
     class _HoverProvider(LspProvider):
         id = "hp"
@@ -305,25 +305,25 @@ async def test_tool_lsp_execute_via_runtime():
 
 
 def test_parse_args_rejects_empty_filepath():
-    from minidsh.packages.tools.lsp import _parse_args
+    from pydsh.packages.tools.lsp import _parse_args
     with pytest.raises(ValueError):
         _parse_args({"filePath": "  ", "operation": "hover", "line": 1, "character": 1})
 
 
 def test_parse_args_rejects_bad_line():
-    from minidsh.packages.tools.lsp import _parse_args
+    from pydsh.packages.tools.lsp import _parse_args
     with pytest.raises(ValueError):
         _parse_args({"filePath": "a.py", "operation": "hover", "line": 0, "character": 1})
 
 
 def test_parse_args_rejects_bad_character():
-    from minidsh.packages.tools.lsp import _parse_args
+    from pydsh.packages.tools.lsp import _parse_args
     with pytest.raises(ValueError):
         _parse_args({"filePath": "a.py", "operation": "hover", "line": 1, "character": 0})
 
 
 def test_result_to_value_locations_with_range():
-    from minidsh.packages.tools.lsp import _result_to_value
+    from pydsh.packages.tools.lsp import _result_to_value
     loc = LspLocation(uri="file:///x.py", range=LspRange(
         start=LspPosition(line=2, character=4), end=LspPosition(line=2, character=9)))
     value = _result_to_value(LspQueryResult(kind="locations", locations=[loc]))
@@ -333,14 +333,14 @@ def test_result_to_value_locations_with_range():
 
 
 def test_result_to_value_hover_none():
-    from minidsh.packages.tools.lsp import _result_to_value
+    from pydsh.packages.tools.lsp import _result_to_value
     value = _result_to_value(LspQueryResult(kind="hover", hover=None))
     assert value["kind"] == "hover"
     assert value["hover"] is None
 
 
 def test_render_locations_with_position():
-    from minidsh.packages.tools.lsp import _render
+    from pydsh.packages.tools.lsp import _render
     value = {"available": True, "kind": "locations", "locations": [
         {"uri": "file:///x.py", "range": {"start": {"line": 4, "character": 2},
                                           "end": {"line": 4, "character": 5}}}]}
@@ -350,25 +350,25 @@ def test_render_locations_with_position():
 
 
 def test_render_locations_empty():
-    from minidsh.packages.tools.lsp import _render
+    from pydsh.packages.tools.lsp import _render
     out = _render({}, {"available": True, "kind": "locations", "locations": []})
     assert out == "No locations found."
 
 
 def test_render_hover_contents():
-    from minidsh.packages.tools.lsp import _render
+    from pydsh.packages.tools.lsp import _render
     out = _render({}, {"available": True, "kind": "hover", "hover": {"contents": "sig"}})
     assert out == "sig"
 
 
 def test_render_hover_none():
-    from minidsh.packages.tools.lsp import _render
+    from pydsh.packages.tools.lsp import _render
     out = _render({}, {"available": True, "kind": "hover", "hover": None})
     assert out == "No hover information."
 
 
 def test_render_unavailable():
-    from minidsh.packages.tools.lsp import _render
+    from pydsh.packages.tools.lsp import _render
     out = _render({}, {"available": False, "error": "boom"})
     assert "unavailable" in out
     assert "boom" in out

@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.loop import AgentLoop, Inbox, ReactLoopAgent
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
-from minidsh.packages.services.session import SessionStore
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime
-from minidsh.packages.tools import bash as tool_bash
-from minidsh.packages.tools import ask_user_question as tool_ask_user
+from pydsh.cordis import Context
+from pydsh.packages.services.loop import AgentLoop, Inbox, ReactLoopAgent
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.packages.services.session import SessionStore
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime
+from pydsh.packages.tools import bash as tool_bash
+from pydsh.packages.tools import ask_user_question as tool_ask_user
 from tests.helpers.world import plug_execution_world
 
 from tests.helpers.fake_llm import make_fake_llm
@@ -156,7 +156,7 @@ async def test_multiple_react_steps_until_text():
 
 
 def test_parse_arguments_garbage_yields_raw():
-    from minidsh.packages.services.loop.agent_loop import _parse_arguments
+    from pydsh.packages.services.loop.agent_loop import _parse_arguments
 
     assert _parse_arguments("{not json") == {"_raw": "{not json"}
     assert _parse_arguments(None) == {}
@@ -187,7 +187,7 @@ async def test_turn_boundary_events_pair():
 
 async def test_turn_events_are_audit_surface():
     """turn/start、turn/end、session/title 是审计面事件（surface=False）。"""
-    from minidsh.packages.services.session.event import AUDIT_TYPES
+    from pydsh.packages.services.session.event import AUDIT_TYPES
 
     ctx, loop = _assemble([{"text": "x"}])
     agent = loop.create()
@@ -202,8 +202,8 @@ async def test_turn_events_are_audit_surface():
 
 def test_derive_messages_skips_audit_events():
     """derive_messages 显式跳过审计事件（turn/*、session/title）。"""
-    from minidsh.packages.services.loop.agent_loop import derive_messages
-    from minidsh.packages.services.session import SessionEvent
+    from pydsh.packages.services.loop.agent_loop import derive_messages
+    from pydsh.packages.services.session import SessionEvent
 
     events = [
         SessionEvent("s", 0, "turn/start", {"turn": 1}),
@@ -222,7 +222,7 @@ def test_derive_messages_skips_audit_events():
 
 async def test_turn_end_error_on_max_steps():
     """max react steps 超限 → turn/end reason=error。"""
-    from minidsh.packages.services.loop.agent_loop import _MAX_REACT_STEPS
+    from pydsh.packages.services.loop.agent_loop import _MAX_REACT_STEPS
 
     # 剧本恒产工具调用 → 用尽后回放最后一行，触顶 _MAX_REACT_STEPS
     script = [{"tool_calls": [("bash", '{"cmd":"loop"}', "call-0")]}]
@@ -240,7 +240,7 @@ async def test_turn_end_error_on_max_steps():
 
 async def test_resume_recovers_turn_no():
     """resume 后从历史 turn/start 恢复 turn 号，续聊不重头。"""
-    from minidsh.packages.services.session import SessionEvent
+    from pydsh.packages.services.session import SessionEvent
 
     ctx, loop = _assemble([{"text": "新回复"}])
     # 已落盘：两轮历史（turn 1、turn 2）
@@ -267,20 +267,20 @@ async def test_resume_recovers_turn_no():
 
 
 def test_fallback_session_title_basic():
-    from minidsh.packages.services.loop.agent_loop import fallback_session_title
+    from pydsh.packages.services.loop.agent_loop import fallback_session_title
 
     assert fallback_session_title("hello world") == "hello world"
 
 
 def test_fallback_session_title_control_chars():
-    from minidsh.packages.services.loop.agent_loop import fallback_session_title
+    from pydsh.packages.services.loop.agent_loop import fallback_session_title
 
     assert "\x1b" not in fallback_session_title("hello\x1b\x00world")
     assert "hello" in fallback_session_title("hello\x1b\x00world")
 
 
 def test_fallback_session_title_truncates_words():
-    from minidsh.packages.services.loop.agent_loop import fallback_session_title
+    from pydsh.packages.services.loop.agent_loop import fallback_session_title
 
     many = " ".join("word" for _ in range(20))
     result = fallback_session_title(many, max_words=8)
@@ -288,7 +288,7 @@ def test_fallback_session_title_truncates_words():
 
 
 def test_fallback_session_title_truncates_bytes():
-    from minidsh.packages.services.loop.agent_loop import fallback_session_title
+    from pydsh.packages.services.loop.agent_loop import fallback_session_title
 
     long = "这是一个很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长的标题"
     result = fallback_session_title(long, max_words=100, max_bytes=30)
@@ -296,7 +296,7 @@ def test_fallback_session_title_truncates_bytes():
 
 
 def test_fallback_session_title_empty():
-    from minidsh.packages.services.loop.agent_loop import fallback_session_title
+    from pydsh.packages.services.loop.agent_loop import fallback_session_title
 
     assert fallback_session_title("") == ""
     assert fallback_session_title("   ") == ""
@@ -317,8 +317,8 @@ async def test_session_title_event_produced_on_first_message():
 
 async def test_session_title_skipped_by_derive_messages():
     """session/title 是审计面（surface=False），derive_messages 跳过。"""
-    from minidsh.packages.services.loop.agent_loop import derive_messages
-    from minidsh.packages.services.session import SessionEvent
+    from pydsh.packages.services.loop.agent_loop import derive_messages
+    from pydsh.packages.services.session import SessionEvent
 
     events = [
         SessionEvent("s", 0, "session/title", {"title": "test"}),

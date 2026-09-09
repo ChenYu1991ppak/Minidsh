@@ -6,7 +6,7 @@ English | [中文](README_zh.md)
 
 > DeepSeek Harness (dsh) is an AI agent framework. This is its Python twin — same architecture, minimal cut, ready to run. [deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) is the companion tutorial that explains every mechanism.
 
-![MiniDsh Architecture](assets/minidsh-architecture.html)
+![Pydsh Architecture](assets/pydsh-architecture.html)
 
 ## Who Should Use This
 
@@ -41,7 +41,7 @@ Compared to the official version (TypeScript + 40+ packages), mini-dsh is **mini
 - **Retrieval**: web search / fetch (SSRF protection + HTML→text) + LSP four operations
 - **Compaction**: context compaction (threshold-triggered, prune / summarize)
 - **Frontend**: pi-tui terminal + ACP JSON-RPC server, switchable via `--profile`
-- **Assembly**: bundle / profile overlay chain + `minidsh plugin` management
+- **Assembly**: bundle / profile overlay chain + `pydsh plugin` management
 
 Full list: [docs/FEATURE.md](docs/FEATURE.md).
 
@@ -52,7 +52,7 @@ mini-dsh/
 ├── Makefile                          # Task automation
 ├── scripts/
 │   └── setup.sh                      # One-click install script
-├── minidsh/                          # Python package
+├── pydsh/                          # Python package
 │   ├── __init__.py
 │   ├── cordis/                       # Plugin container kernel
 │   ├── infrastructure/               # Boot, config, bundle, profile, packaging, tui
@@ -84,8 +84,8 @@ mini-dsh/
 ### 1. Install
 
 ```bash
-git clone https://github.com/ChenYu1991ppak/Minidsh.git
-cd Minidsh
+git clone https://github.com/ChenYu1991ppak/Pydsh.git
+cd Pydsh
 make install
 ```
 
@@ -93,10 +93,10 @@ This installs Python dependencies (`pip install -e .`), Node.js dependencies, an
 
 ### 2. Configure Your Model
 
-Create `~/.minidsh/models.json` with your API key:
+Create `~/.pydsh/models.json` with your API key:
 
 ```bash
-mkdir -p ~/.minidsh
+mkdir -p ~/.pydsh
 ```
 
 Example `models.json`:
@@ -126,7 +126,7 @@ make tui                          # Start pi-tui TUI
 Or run directly:
 
 ```bash
-minidsh --profile tui [./project] # pi-tui frontend
+pydsh --profile tui [./project] # pi-tui frontend
 ```
 
 ## Development
@@ -141,7 +141,7 @@ make clean      # Clean build artifacts and caches
 If you don't need the TUI frontend, you can use the ACP server directly:
 
 ```bash
-minidsh --profile acp              # ACP JSON-RPC server (requires API key)
+pydsh --profile acp              # ACP JSON-RPC server (requires API key)
 ```
 
 ## Custom Profiles
@@ -149,15 +149,15 @@ minidsh --profile acp              # ACP JSON-RPC server (requires API key)
 `--profile <name>` launches a custom profile or built-in bundle. See [docs/PRINCIPLES.md §7](docs/PRINCIPLES.md#7-bundle--profile-specification) for details.
 
 ```yaml
-# ~/.minidsh/profiles/my.yaml
+# ~/.pydsh/profiles/my.yaml
 bundles: [tui]          # stack the tui frontend on top of base
 plugins:                # append / override plugins
   - my-extra-plugin
-remove: [minidsh.llm-openai]  # remove plugins
+remove: [pydsh.llm-openai]  # remove plugins
 ```
 
 ```bash
-minidsh --profile my [./project]
+pydsh --profile my [./project]
 ```
 
 ## Future Work (in implementation order)

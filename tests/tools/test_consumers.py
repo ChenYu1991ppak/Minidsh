@@ -1,17 +1,17 @@
 """CT4 验收测试：tool-bash / tool-read / tool-write / tool-edit / glob / grep / todo_write / ask_user_question consumer（经 provider 服务）。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
-from minidsh.packages.tools import bash as tool_bash
-from minidsh.packages.tools import read_file as tool_read
-from minidsh.packages.tools import write_file as tool_write
-from minidsh.packages.tools import edit_file as tool_edit
-from minidsh.packages.tools import glob as tool_glob
-from minidsh.packages.tools import grep as tool_grep
-from minidsh.packages.tools import todo_write as tool_todo_write
-from minidsh.packages.tools import ask_user_question as tool_ask_user
+from pydsh.cordis import Context
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
+from pydsh.packages.tools import bash as tool_bash
+from pydsh.packages.tools import read_file as tool_read
+from pydsh.packages.tools import write_file as tool_write
+from pydsh.packages.tools import edit_file as tool_edit
+from pydsh.packages.tools import glob as tool_glob
+from pydsh.packages.tools import grep as tool_grep
+from pydsh.packages.tools import todo_write as tool_todo_write
+from pydsh.packages.tools import ask_user_question as tool_ask_user
 from tests.helpers.world import plug_execution_world
 
 

@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "minidsh"
+name = "pydsh"
 dynamic = ["version"]
 description = "test"
 requires-python = ">=3.11"
@@ -13,60 +13,60 @@ dependencies = ["openai>=1.0", "pyyaml>=6.0", "httpx>=0.27"]
 test = ["pytest>=7", "pytest-asyncio", "pytest-cov"]
 
 [project.scripts]
-minidsh = "minidsh.infrastructure.boot.cli:main"
+pydsh = "pydsh.infrastructure.boot.cli:main"
 
-[project.entry-points."minidsh.plugins"]
-"minidsh.config" = "minidsh.infrastructure.config.providers.config"
-"minidsh.root" = "minidsh.packages.services.workspace.providers.root"
-"minidsh.sessions" = "minidsh.packages.services.session.providers.sessions"
-"minidsh.prompt" = "minidsh.packages.services.prompt.providers.prompt"
-"minidsh.tools" = "minidsh.packages.services.tool_runtime.providers.tools"
-"minidsh.llm-openai" = "minidsh.packages.services.llm.providers.openai"
-"minidsh.llm-fake" = "minidsh.packages.services.llm.providers.fake"
-"minidsh.subprocess" = "minidsh.packages.services.subprocess.providers.local"
-"minidsh.sandbox" = "minidsh.packages.services.sandbox.providers.bwrap"
-"minidsh.shell-local" = "minidsh.packages.services.shell.providers.local"
-"minidsh.shell-sandbox" = "minidsh.packages.services.shell.providers.sandbox"
-"minidsh.fs-local" = "minidsh.packages.services.fs.providers.local"
-"minidsh.tool-bash" = "minidsh.packages.tools.bash"
-"minidsh.tool-read" = "minidsh.packages.tools.read_file"
-"minidsh.tool-write" = "minidsh.packages.tools.write_file"
-"minidsh.tool-edit" = "minidsh.packages.tools.edit_file"
-"minidsh.tool-glob" = "minidsh.packages.tools.glob"
-"minidsh.tool-grep" = "minidsh.packages.tools.grep"
-"minidsh.tool-todo" = "minidsh.packages.tools.todo_write"
-"minidsh.tool-ask-user" = "minidsh.packages.tools.ask_user_question"
-"minidsh.skills" = "minidsh.packages.services.skills.providers.skills"
-"minidsh.subagents" = "minidsh.packages.services.subagent.providers.subagents"
-"minidsh.agents" = "minidsh.packages.services.agents.providers.agents"
-"minidsh.projections" = "minidsh.packages.services.session_projection.providers.projections"
-"minidsh.settings" = "minidsh.packages.services.settings.providers.file"
-"minidsh.agents-md" = "minidsh.packages.services.prompt.providers.agents_md"
-"minidsh.loop" = "minidsh.packages.services.loop.providers.loop"
-"minidsh.compaction" = "minidsh.packages.services.compaction.providers.compaction"
-"minidsh.token-meter" = "minidsh.packages.services.token_meter.providers.token_meter"
-"minidsh.approval" = "minidsh.packages.services.approval.providers.approval"
-"minidsh.web" = "minidsh.packages.services.web.providers.runtime"
-"minidsh.web-fetch" = "minidsh.packages.services.web.providers.fetch_http"
-"minidsh.web-search-ddg" = "minidsh.packages.services.web.providers.search_ddg"
-"minidsh.tool-web" = "minidsh.packages.tools.web"
-"minidsh.lsp" = "minidsh.packages.services.lsp.providers.runtime"
-"minidsh.tool-lsp" = "minidsh.packages.tools.lsp"
-"minidsh.trace-render" = "minidsh.packages.services.session.reporting.trace_render"
-"minidsh.persistence-jsonl" = "minidsh.packages.services.persistence.providers.jsonl"
-"minidsh.persistence-sqlite" = "minidsh.packages.services.persistence.providers.sqlite"
-"minidsh.app-tui" = "minidsh.infrastructure.tui.app_pi_tui"
-"minidsh.acp" = "minidsh.packages.services.acp.providers.acp"
-"minidsh.app-acp" = "minidsh.packages.services.acp.app"
+[project.entry-points."pydsh.plugins"]
+"pydsh.config" = "pydsh.infrastructure.config.providers.config"
+"pydsh.root" = "pydsh.packages.services.workspace.providers.root"
+"pydsh.sessions" = "pydsh.packages.services.session.providers.sessions"
+"pydsh.prompt" = "pydsh.packages.services.prompt.providers.prompt"
+"pydsh.tools" = "pydsh.packages.services.tool_runtime.providers.tools"
+"pydsh.llm-openai" = "pydsh.packages.services.llm.providers.openai"
+"pydsh.llm-fake" = "pydsh.packages.services.llm.providers.fake"
+"pydsh.subprocess" = "pydsh.packages.services.subprocess.providers.local"
+"pydsh.sandbox" = "pydsh.packages.services.sandbox.providers.bwrap"
+"pydsh.shell-local" = "pydsh.packages.services.shell.providers.local"
+"pydsh.shell-sandbox" = "pydsh.packages.services.shell.providers.sandbox"
+"pydsh.fs-local" = "pydsh.packages.services.fs.providers.local"
+"pydsh.tool-bash" = "pydsh.packages.tools.bash"
+"pydsh.tool-read" = "pydsh.packages.tools.read_file"
+"pydsh.tool-write" = "pydsh.packages.tools.write_file"
+"pydsh.tool-edit" = "pydsh.packages.tools.edit_file"
+"pydsh.tool-glob" = "pydsh.packages.tools.glob"
+"pydsh.tool-grep" = "pydsh.packages.tools.grep"
+"pydsh.tool-todo" = "pydsh.packages.tools.todo_write"
+"pydsh.tool-ask-user" = "pydsh.packages.tools.ask_user_question"
+"pydsh.skills" = "pydsh.packages.services.skills.providers.skills"
+"pydsh.subagents" = "pydsh.packages.services.subagent.providers.subagents"
+"pydsh.agents" = "pydsh.packages.services.agents.providers.agents"
+"pydsh.projections" = "pydsh.packages.services.session_projection.providers.projections"
+"pydsh.settings" = "pydsh.packages.services.settings.providers.file"
+"pydsh.agents-md" = "pydsh.packages.services.prompt.providers.agents_md"
+"pydsh.loop" = "pydsh.packages.services.loop.providers.loop"
+"pydsh.compaction" = "pydsh.packages.services.compaction.providers.compaction"
+"pydsh.token-meter" = "pydsh.packages.services.token_meter.providers.token_meter"
+"pydsh.approval" = "pydsh.packages.services.approval.providers.approval"
+"pydsh.web" = "pydsh.packages.services.web.providers.runtime"
+"pydsh.web-fetch" = "pydsh.packages.services.web.providers.fetch_http"
+"pydsh.web-search-ddg" = "pydsh.packages.services.web.providers.search_ddg"
+"pydsh.tool-web" = "pydsh.packages.tools.web"
+"pydsh.lsp" = "pydsh.packages.services.lsp.providers.runtime"
+"pydsh.tool-lsp" = "pydsh.packages.tools.lsp"
+"pydsh.trace-render" = "pydsh.packages.services.session.reporting.trace_render"
+"pydsh.persistence-jsonl" = "pydsh.packages.services.persistence.providers.jsonl"
+"pydsh.persistence-sqlite" = "pydsh.packages.services.persistence.providers.sqlite"
+"pydsh.app-tui" = "pydsh.infrastructure.tui.app_pi_tui"
+"pydsh.acp" = "pydsh.packages.services.acp.providers.acp"
+"pydsh.app-acp" = "pydsh.packages.services.acp.app"
 
 [tool.setuptools.dynamic]
-version = {attr = "minidsh.__version__"}
+version = {attr = "pydsh.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["minidsh*"]
+include = ["pydsh*"]
 
 [tool.pytest.ini_options]
-pythonpath = ["minidsh"]
+pythonpath = ["pydsh"]
 testpaths = ["tests"]
 asyncio_mode = "auto"

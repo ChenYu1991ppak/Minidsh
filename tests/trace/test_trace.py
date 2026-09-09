@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import io
 
-from minidsh.cordis import Context
-from minidsh.packages.services.session import Session, SessionStore
-from minidsh.packages.services.persistence import PersistenceCoordinator
-from minidsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
-from minidsh.packages.services.persistence.providers.sqlite import SqliteSessionPersistence
-from minidsh.packages.services.session.reporting import ConsoleRenderer, load_session_events, render_event, replay_session
+from pydsh.cordis import Context
+from pydsh.packages.services.session import Session, SessionStore
+from pydsh.packages.services.persistence import PersistenceCoordinator
+from pydsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
+from pydsh.packages.services.persistence.providers.sqlite import SqliteSessionPersistence
+from pydsh.packages.services.session.reporting import ConsoleRenderer, load_session_events, render_event, replay_session
 
 
 def _harness(tmp_path):
@@ -30,7 +30,7 @@ def _harness(tmp_path):
 
 
 def test_render_event_scalar_and_dict():
-    from minidsh.packages.services.session import SessionEvent
+    from pydsh.packages.services.session import SessionEvent
 
     line = render_event(SessionEvent("s", 0, "user-message", {"text": "你好"}))
     assert line == "[s:0] user-message text=你好"
@@ -43,7 +43,7 @@ def test_render_event_scalar_and_dict():
 
 
 def test_render_event_folds_newlines():
-    from minidsh.packages.services.session import SessionEvent
+    from pydsh.packages.services.session import SessionEvent
 
     line = render_event(SessionEvent("s", 0, "user-message", {"text": "a\nb"}))
     assert "a\\nb" in line
@@ -127,7 +127,7 @@ def test_load_session_events_from_jsonl_file(tmp_path):
 
 
 def test_replay_session_orders_by_seq():
-    from minidsh.packages.services.session import SessionEvent
+    from pydsh.packages.services.session import SessionEvent
 
     events = [
         SessionEvent("s", 3, "assistant-message", {"content": "later"}),

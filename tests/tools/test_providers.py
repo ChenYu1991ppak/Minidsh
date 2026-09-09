@@ -1,9 +1,9 @@
 """CT3 验收测试：shell/fs 的 provider。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.shell import ShellRequest
-from minidsh.packages.services.fs import FsRequest
+from pydsh.cordis import Context
+from pydsh.packages.services.shell import ShellRequest
+from pydsh.packages.services.fs import FsRequest
 from tests.helpers.world import plug_execution_world
 
 

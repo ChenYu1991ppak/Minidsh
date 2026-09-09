@@ -5,8 +5,8 @@ import types
 
 import pytest
 
-from minidsh.infrastructure.packaging import discover_plugins, entry_point_resolver
-from minidsh.infrastructure.packaging.discover import _load_entry_point
+from pydsh.infrastructure.packaging import discover_plugins, entry_point_resolver
+from pydsh.infrastructure.packaging.discover import _load_entry_point
 
 
 class _FakeEntryPoint:
@@ -26,7 +26,7 @@ def test_load_entry_point_imports_module(monkeypatch):
         mod.apply = lambda ctx: None
         return mod
 
-    monkeypatch.setattr("minidsh.infrastructure.packaging.discover.importlib.import_module", fake_import)
+    monkeypatch.setattr("pydsh.infrastructure.packaging.discover.importlib.import_module", fake_import)
     plugin = _load_entry_point(_FakeEntryPoint("my-plugin", "my_pkg.mod"))
     assert plugin.name == "imported-plugin"
     assert plugin.inject == ["tools"]
@@ -37,7 +37,7 @@ def test_load_entry_point_import_failure_returns_none(monkeypatch):
     def boom(name):
         raise ImportError(name)
 
-    monkeypatch.setattr("minidsh.infrastructure.packaging.discover.importlib.import_module", boom)
+    monkeypatch.setattr("pydsh.infrastructure.packaging.discover.importlib.import_module", boom)
     assert _load_entry_point(_FakeEntryPoint("x", "missing.mod")) is None
 
 
@@ -53,9 +53,9 @@ def test_discover_plugins_enumerates_group(monkeypatch):
         mod.apply = lambda ctx: None
         return mod
 
-    import minidsh.infrastructure.packaging.discover as d
+    import pydsh.infrastructure.packaging.discover as d
 
-    monkeypatch.setattr("minidsh.infrastructure.packaging.discover.importlib.import_module", fake_import)
+    monkeypatch.setattr("pydsh.infrastructure.packaging.discover.importlib.import_module", fake_import)
     monkeypatch.setattr(d, "_metadata", types.SimpleNamespace(entry_points=lambda group=None: eps))
     found = discover_plugins()
     assert set(found) == {"plugin-a", "plugin-b"}
@@ -72,7 +72,7 @@ def test_resolver_returns_plugin_and_caches():
         mod.apply = lambda ctx: None
         return {"known": mod}
 
-    import minidsh.infrastructure.packaging.discover as d
+    import pydsh.infrastructure.packaging.discover as d
 
     original = d.discover_plugins
     d.discover_plugins = fake_discover

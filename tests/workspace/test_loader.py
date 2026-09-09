@@ -1,17 +1,17 @@
 """T17 验收测试：workspace 项目加载。"""
 from __future__ import annotations
 
-from minidsh.infrastructure.config.files import save_json, project_dir
-from minidsh.infrastructure.boot import load_project
-from minidsh.packages.services.session import SessionStore
+from pydsh.infrastructure.config.files import save_json, project_dir
+from pydsh.infrastructure.boot import load_project
+from pydsh.packages.services.session import SessionStore
 
 
 
 def _make_project(tmp_path):
-    """造一个规范 demo 项目目录：AGENTS.md + skills/ + agents/ + .minidsh/models.json + settings.json。"""
+    """造一个规范 demo 项目目录：AGENTS.md + skills/ + agents/ + .pydsh/models.json + settings.json。"""
     (tmp_path / "AGENTS.md").write_text("全局指令：保持简短。\n", encoding="utf-8")
 
-    # 项目级模型 + harness 设置（走 .minidsh/ 目录）
+    # 项目级模型 + harness 设置（走 .pydsh/ 目录）
     save_json(project_dir(tmp_path) / "models.json", {
         "models": [{"id": "demo-model", "name": "Demo", "url": "https://api.example.com", "apiKey": "demo-key"}],
         "availableModels": ["demo-model"],
@@ -47,8 +47,8 @@ def test_load_project_assembles_capabilities(tmp_path):
 
 
 def test_load_project_config_service(tmp_path):
-    """minidsh.config 插件提供 ctx.config（Config 实例）。"""
-    from minidsh.infrastructure.config import Config
+    """pydsh.config 插件提供 ctx.config（Config 实例）。"""
+    from pydsh.infrastructure.config import Config
 
     ctx = _load(_make_project(tmp_path))
     assert ctx.has("config")
@@ -128,12 +128,12 @@ def test_load_project_missing_url_raises(tmp_path):
 
 def test_load_project_plugins_explicit(tmp_path):
     """plugins 显式传入时跳过覆盖链（loader plugins 分支）。"""
-    from minidsh.infrastructure.bundle import PluginRef
+    from pydsh.infrastructure.bundle import PluginRef
 
     ctx = load_project(
         _make_project(tmp_path),
         quiet=True,
-        plugins=[PluginRef("minidsh.config"), PluginRef("minidsh.sessions")],
+        plugins=[PluginRef("pydsh.config"), PluginRef("pydsh.sessions")],
     )
     assert ctx.has("config")
     assert ctx.has("sessions")
@@ -148,14 +148,14 @@ def test_load_project_extra_resolver(tmp_path):
     mod.name = "third-party"
     mod.inject = []
     mod.apply = lambda ctx: ctx.provide("third-party-marker", "ok")
-    from minidsh.infrastructure.bundle import PluginRef
+    from pydsh.infrastructure.bundle import PluginRef
 
     ctx = load_project(
         _make_project(tmp_path),
         quiet=True,
         plugins=[
-            PluginRef("minidsh.config"),
-            PluginRef("minidsh.sessions"),
+            PluginRef("pydsh.config"),
+            PluginRef("pydsh.sessions"),
             PluginRef("third-party"),
         ],
         extra_resolver=lambda name: mod if name == "third-party" else None,
@@ -164,7 +164,7 @@ def test_load_project_extra_resolver(tmp_path):
 
 
 def test_parse_agent_md_without_frontmatter():
-    from minidsh.packages.services.subagent.providers._helpers import _parse_agent_md
+    from pydsh.packages.services.subagent.providers._helpers import _parse_agent_md
 
     assert _parse_agent_md("直接正文") is None  # 无 frontmatter → 返回 None（loader 用文件名兜底）
 

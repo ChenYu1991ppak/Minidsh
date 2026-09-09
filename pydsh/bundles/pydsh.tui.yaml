@@ -1,0 +1,11 @@
+# tui bundle：pi-tui 终端前端（app 插件）。
+# 经 ``pydsh --profile tui`` 启动 pi-tui 前端（前端内部 spawn ACP backend）。
+# launcher 进程只负责 spawn 前端，不需要 llm/trace-render（前端自己 spawn
+# ``pydsh --profile acp`` 作 ACP backend）。
+bundles:
+  - base
+remove:
+  - pydsh.llm-openai
+  - pydsh.trace-render
+plugins:
+  - pydsh.app-tui

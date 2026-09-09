@@ -1,9 +1,9 @@
 """默认接上次会话 + /new 新会话 的验收测试。"""
 from __future__ import annotations
 
-from minidsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
-from minidsh.packages.services.persistence.providers.sqlite import SqliteSessionPersistence
-from minidsh.packages.services.session.event import SessionEvent
+from pydsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
+from pydsh.packages.services.persistence.providers.sqlite import SqliteSessionPersistence
+from pydsh.packages.services.session.event import SessionEvent
 
 
 def test_jsonl_latest_returns_most_recent(tmp_path):

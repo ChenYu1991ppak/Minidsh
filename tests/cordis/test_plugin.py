@@ -5,7 +5,7 @@ import types
 
 import pytest
 
-from minidsh.cordis import Plugin, normalize_plugin
+from pydsh.cordis import Plugin, normalize_plugin
 
 
 def _mk_module(name="mymod", inject=None, has_apply=True, module_name="fake_mod"):

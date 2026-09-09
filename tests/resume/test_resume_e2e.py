@@ -1,14 +1,14 @@
 """resume 端到端回归：恢复后新事件 append 不 seq 断裂（协调器游标采纳）。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.loop import AgentLoop
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
-from minidsh.packages.services.session import SessionStore
-from minidsh.packages.services.persistence import PersistenceCoordinator
-from minidsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime
+from pydsh.cordis import Context
+from pydsh.packages.services.loop import AgentLoop
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.packages.services.session import SessionStore
+from pydsh.packages.services.persistence import PersistenceCoordinator
+from pydsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime
 from tests.helpers.fake_llm import make_fake_llm
 
 

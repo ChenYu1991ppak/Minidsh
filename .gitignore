@@ -12,7 +12,7 @@ dist/
 
 # 敏感信息（绝不提交 secrets / API key）
 # models.json 内嵌明文 apiKey，永不提交。
-.minidsh/models.json
+.pydsh/models.json
 .env
 *.key
 
@@ -34,7 +34,7 @@ tasks/
 # 例外：根 README 与项目文档随 git 分发（docs/ 规则手册 + 生态选型 + 前端说明）
 !docs/
 !docs/**
-!minidsh/infrastructure/tui/pi-tui/README.md
+!pydsh/infrastructure/tui/pi-tui/README.md
 
 # 例外：doc/ 下的规则手册随 git 分发（构建原则是迭代依据，必须进库）
 !doc/

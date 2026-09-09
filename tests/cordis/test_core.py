@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context, Fiber, Service, ServiceNotFoundError
+from pydsh.cordis import Context, Fiber, Service, ServiceNotFoundError
 
 
 # ---------- provide / 服务解析 ----------

@@ -6,7 +6,7 @@
 
 > DeepSeek Harness（dsh）是一个 AI agent 框架。这是它的 Python 镜像——同样架构，最小化裁剪，开箱即用。[deepseek-harness-anatomy](https://github.com/ChenYu1991ppak/deepseek-harness-anatomy) 是配套教程，逐机制解释一切。
 
-![MiniDsh 架构图](assets/minidsh-architecture.html)
+![Pydsh 架构图](assets/pydsh-architecture.html)
 
 ## 谁该用这个
 
@@ -41,7 +41,7 @@ mini-dsh 忠实复刻了这一架构：
 - **检索**：Web search/fetch（SSRF 防护 + HTML→text）+ LSP 四操作
 - **压缩**：上下文压缩（阈值触发，prune/summarize）
 - **前端**：pi-tui 终端 + ACP JSON-RPC server，经 `--profile` 切换
-- **装配**：bundle/profile 覆盖链 + `minidsh plugin` 管理
+- **装配**：bundle/profile 覆盖链 + `pydsh plugin` 管理
 
 完整列表见 [docs/FEATURE_zh.md](docs/FEATURE_zh.md)。
 
@@ -52,7 +52,7 @@ mini-dsh/
 ├── Makefile                          # 任务自动化
 ├── scripts/
 │   └── setup.sh                      # 一键安装脚本
-├── minidsh/                          # Python 包
+├── pydsh/                          # Python 包
 │   ├── __init__.py
 │   ├── cordis/                       # 插件容器内核
 │   ├── infrastructure/               # 启动、配置、bundle、profile、打包、tui
@@ -84,8 +84,8 @@ mini-dsh/
 ### 1. 安装
 
 ```bash
-git clone https://github.com/ChenYu1991ppak/Minidsh.git
-cd Minidsh
+git clone https://github.com/ChenYu1991ppak/Pydsh.git
+cd Pydsh
 make install
 ```
 
@@ -93,10 +93,10 @@ make install
 
 ### 2. 配置模型
 
-创建 `~/.minidsh/models.json` 并填入你的 API key：
+创建 `~/.pydsh/models.json` 并填入你的 API key：
 
 ```bash
-mkdir -p ~/.minidsh
+mkdir -p ~/.pydsh
 ```
 
 `models.json` 示例：
@@ -126,7 +126,7 @@ make tui                          # 启动 pi-tui TUI
 或直接运行：
 
 ```bash
-minidsh --profile tui [./project] # pi-tui 前端
+pydsh --profile tui [./project] # pi-tui 前端
 ```
 
 ## 开发
@@ -141,7 +141,7 @@ make clean      # 清理编译产物与缓存
 如果不需要 TUI 前端，可直接使用 ACP server：
 
 ```bash
-minidsh --profile acp              # ACP JSON-RPC server（需 API key）
+pydsh --profile acp              # ACP JSON-RPC server（需 API key）
 ```
 
 ## 自定义 profile
@@ -149,15 +149,15 @@ minidsh --profile acp              # ACP JSON-RPC server（需 API key）
 `--profile <name>` 启动自定义 profile 或内置 bundle。详细编写方法见 [docs/PRINCIPLES_zh.md §7](docs/PRINCIPLES_zh.md#7-bundle--profile-规约)。
 
 ```yaml
-# ~/.minidsh/profiles/my.yaml
+# ~/.pydsh/profiles/my.yaml
 bundles: [tui]          # 在 base 上叠加 tui 前端
 plugins:                # 追加/覆盖插件
   - my-extra-plugin
-remove: [minidsh.llm-openai]  # 移除插件
+remove: [pydsh.llm-openai]  # 移除插件
 ```
 
 ```bash
-minidsh --profile my [./project]
+pydsh --profile my [./project]
 ```
 
 ## 未来工作（按实现顺序）

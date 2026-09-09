@@ -1,13 +1,13 @@
 """CT6 验收测试：provider 可替换（提供方可替换的核心验证）。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
-from minidsh.packages.services.shell import ShellService, ShellRequest, ShellResult
-from minidsh.packages.services.fs import FsService, FsRequest, FsResult
-from minidsh.packages.tools import bash as tool_bash
-from minidsh.packages.tools import read_file as tool_read
+from pydsh.cordis import Context
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
+from pydsh.packages.services.shell import ShellService, ShellRequest, ShellResult
+from pydsh.packages.services.fs import FsService, FsRequest, FsResult
+from pydsh.packages.tools import bash as tool_bash
+from pydsh.packages.tools import read_file as tool_read
 from tests.helpers.world import plug_execution_world
 
 

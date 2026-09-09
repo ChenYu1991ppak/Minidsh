@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
-from minidsh.packages.services.skills import (
+from pydsh.cordis import Context
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.packages.services.skills import (
     FilesystemSkillProvider,
     SkillRegistry,
     make_catalog_tool,
     parse_skill_file,
 )
-from minidsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
+from pydsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
 
 
 def _write_skill(root, name, description="desc", body="**技能正文**"):

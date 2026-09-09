@@ -5,10 +5,10 @@ M8 后 shell-local 依赖 ctx.subprocess（消费 seam），装配时必须先 s
 """
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.subprocess.providers import local as subprocess_local
-from minidsh.packages.services.shell.providers import local as shell_local
-from minidsh.packages.services.fs.providers import local as fs_local
+from pydsh.cordis import Context
+from pydsh.packages.services.subprocess.providers import local as subprocess_local
+from pydsh.packages.services.shell.providers import local as shell_local
+from pydsh.packages.services.fs.providers import local as fs_local
 
 __all__ = ["plug_execution_world"]
 

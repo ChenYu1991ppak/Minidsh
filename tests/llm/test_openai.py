@@ -5,8 +5,8 @@ import os
 
 import pytest
 
-from minidsh.packages.services.llm import Chunk, OpenAILlm
-from minidsh.cordis import Context
+from pydsh.packages.services.llm import Chunk, OpenAILlm
+from pydsh.cordis import Context
 
 
 class _Fn:

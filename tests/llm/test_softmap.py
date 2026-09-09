@@ -1,7 +1,7 @@
 """M2 验收测试：softmap 软映射层（四家思考强度/推理模型判别）。"""
 from __future__ import annotations
 
-from minidsh.packages.services.llm import softmap
+from pydsh.packages.services.llm import softmap
 
 
 # ---------- is_reasoning_model ----------

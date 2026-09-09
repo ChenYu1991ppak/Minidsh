@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.session import SessionStore
-from minidsh.packages.services.session_projection import (
+from pydsh.cordis import Context
+from pydsh.packages.services.session import SessionStore
+from pydsh.packages.services.session_projection import (
     ProjectionDefinition,
     SessionProjectionRegistry,
     make_last_message_unit,

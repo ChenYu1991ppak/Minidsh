@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.agents import Agent, AgentFactory, AgentRegistry
+from pydsh.cordis import Context
+from pydsh.packages.services.agents import Agent, AgentFactory, AgentRegistry
 
 
 class _FakeFactory(AgentFactory):

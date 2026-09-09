@@ -7,11 +7,11 @@ import json
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.acp import AcpServerProvider
-from minidsh.packages.services.acp.providers import transport
-from minidsh.packages.services.session import SessionStore
-from minidsh.infrastructure.config import Config
+from pydsh.cordis import Context
+from pydsh.packages.services.acp import AcpServerProvider
+from pydsh.packages.services.acp.providers import transport
+from pydsh.packages.services.session import SessionStore
+from pydsh.infrastructure.config import Config
 
 
 # ---------------------------------------------------------------------------
@@ -69,12 +69,12 @@ def test_jsonrpc_error_to_dict():
 
 
 def _ev(session_id, type_, **payload):
-    from minidsh.packages.services.session.event import SessionEvent
+    from pydsh.packages.services.session.event import SessionEvent
     return SessionEvent(session_id=session_id, seq=0, type=type_, payload=payload)
 
 
 def test_to_update_message_chunk():
-    from minidsh.packages.services.acp.definition import AGENT_MESSAGE_CHUNK
+    from pydsh.packages.services.acp.definition import AGENT_MESSAGE_CHUNK
 
     ctx = Context()
     ctx.provide("sessions", SessionStore(ctx))
@@ -85,7 +85,7 @@ def test_to_update_message_chunk():
 
 
 def test_to_update_thought_chunk():
-    from minidsh.packages.services.acp.definition import AGENT_THOUGHT_CHUNK
+    from pydsh.packages.services.acp.definition import AGENT_THOUGHT_CHUNK
 
     ctx = Context()
     ctx.provide("sessions", SessionStore(ctx))
@@ -95,7 +95,7 @@ def test_to_update_thought_chunk():
 
 
 def test_to_update_tool_call_and_result():
-    from minidsh.packages.services.acp.definition import TOOL_CALL, TOOL_CALL_UPDATE
+    from pydsh.packages.services.acp.definition import TOOL_CALL, TOOL_CALL_UPDATE
 
     ctx = Context()
     ctx.provide("sessions", SessionStore(ctx))
@@ -128,14 +128,14 @@ def _server_with_llm(script):
     ctx = Context()
     ctx.provide("sessions", SessionStore(ctx))
     ctx.provide("config", Config())
-    from minidsh.packages.services.tool_runtime import ToolRuntime
+    from pydsh.packages.services.tool_runtime import ToolRuntime
     tools = ToolRuntime(ctx)
     ctx.provide("tools", tools)
-    from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+    from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
     LocalSystemPromptService(ctx)
     from tests.helpers.fake_llm import make_fake_llm
     ctx.plugin(make_fake_llm(script))
-    from minidsh.packages.services.loop import AgentLoop
+    from pydsh.packages.services.loop import AgentLoop
     loop = AgentLoop(ctx)
     ctx.provide("agent_loop", loop)
     server = AcpServerProvider(ctx)

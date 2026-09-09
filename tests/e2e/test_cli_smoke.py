@@ -1,6 +1,6 @@
 """T18 验收测试：CLI 装配 + examples/demo + e2e 冒烟。
 
-用 ``minidsh ... [dir]`` 直接调用（交互面是 TUI，测试经 monkeypatch 隔离 TUI 启动），
+用 ``pydsh ... [dir]`` 直接调用（交互面是 TUI，测试经 monkeypatch 隔离 TUI 启动），
 配合 monkeypatched stdin/stdout 断言端到端行为。对应 spec S1 / S2 / S3。
 
 LLM 走 openai mock：monkeypatch ``cli.load_project`` 注入假 client（跳过真实 key 与网络）。
@@ -13,8 +13,8 @@ from pathlib import Path
 
 import shutil
 
-from minidsh.infrastructure.boot import cli as cli_module
-from minidsh.infrastructure.boot.cli import main
+from pydsh.infrastructure.boot import cli as cli_module
+from pydsh.infrastructure.boot.cli import main
 
 from tests.helpers.openai_fake import make_scripted_client
 
@@ -37,13 +37,13 @@ def _run_cli(argv, stdin_text=""):
 def _patch_loader(monkeypatch, script=None):
     """把 cli.load_project 换成注入假 llm provider 插件的版本；并用 headless app
     驱动替代真 TUI（agent 经会话事件折回转录）。"""
-    from minidsh.infrastructure.boot import cli as cli_module
+    from pydsh.infrastructure.boot import cli as cli_module
 
     def fake_load(project_dir, *, storage=None, **kw):
-        from minidsh.infrastructure.boot.loader import load_project
+        from pydsh.infrastructure.boot.loader import load_project
 
-        import minidsh.packages.services.llm.providers.openai as llm_pg
-        from minidsh.packages.services.llm.providers.openai import OpenAILlm
+        import pydsh.packages.services.llm.providers.openai as llm_pg
+        from pydsh.packages.services.llm.providers.openai import OpenAILlm
         from tests.helpers.openai_fake import make_scripted_client
 
         client = make_scripted_client(script if script is not None else [{"text": "回复"}])
@@ -150,7 +150,7 @@ def test_replay_cli_reads_session(tmp_path, monkeypatch):
 def test_demo_project_files_present():
     """examples/demo 三要素齐全（spec S4 的前置）。"""
     assert (DEMO / "AGENTS.md").is_file()
-    assert (DEMO / ".minidsh" / "models.json").is_file()
-    assert (DEMO / ".minidsh" / "settings.json").is_file()
+    assert (DEMO / ".pydsh" / "models.json").is_file()
+    assert (DEMO / ".pydsh" / "settings.json").is_file()
     assert (DEMO / "skills" / "relay" / "SKILL.md").is_file()
     assert (DEMO / "agents" / "reviewer.md").is_file()

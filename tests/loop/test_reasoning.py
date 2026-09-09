@@ -1,17 +1,17 @@
 """M3 验收测试：reasoning-chunk 事件 + 按需回传协议。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.loop import AgentLoop
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
-from minidsh.packages.services.session import SessionStore
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime
-from minidsh.packages.services.llm.providers.openai import OpenAILlm
-from minidsh.packages.services.llm import Chunk, softmap
+from pydsh.cordis import Context
+from pydsh.packages.services.loop import AgentLoop
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.packages.services.session import SessionStore
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime
+from pydsh.packages.services.llm.providers.openai import OpenAILlm
+from pydsh.packages.services.llm import Chunk, softmap
 from tests.helpers.openai_fake import make_scripted_client
 from tests.helpers.world import plug_execution_world
-from minidsh.packages.tools import bash as tool_bash
+from pydsh.packages.tools import bash as tool_bash
 
 
 def _assemble(script, model="fake-llm"):

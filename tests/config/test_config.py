@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.infrastructure.config import Config, ModelSpec, resolve_config
-from minidsh.infrastructure.config.config import _validate_effort
-from minidsh.infrastructure.config.files import load_json, save_json, user_models_path, user_settings_path, project_dir
+from pydsh.infrastructure.config import Config, ModelSpec, resolve_config
+from pydsh.infrastructure.config.config import _validate_effort
+from pydsh.infrastructure.config.files import load_json, save_json, user_models_path, user_settings_path, project_dir
 
 
 # ---------- 默认值 ----------
@@ -25,7 +25,7 @@ def test_defaults_empty():
 
 def _write_user(models=None, settings=None, tmp_path=None, monkeypatch=None):
     if tmp_path is not None:
-        monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
+        monkeypatch.setenv("PYDSH_HOME", str(tmp_path))
     if models is not None:
         save_json(user_models_path(), models, secure=True)
     if settings is not None:
@@ -90,7 +90,7 @@ def test_parse_settings(tmp_path, monkeypatch):
 def test_project_merges_models_with_override(tmp_path, monkeypatch):
     """模型拼接：同 id 项目级覆盖；项目只出现过的模型追加。"""
     user_home = tmp_path / "home"
-    monkeypatch.setenv("MINIDSH_HOME", str(user_home))
+    monkeypatch.setenv("PYDSH_HOME", str(user_home))
     _write_user(models={
         "models": [
             {"id": "shared", "url": "user-url", "apiKey": "user-key"},
@@ -121,7 +121,7 @@ def test_project_merges_models_with_override(tmp_path, monkeypatch):
 
 def test_project_settings_override(tmp_path, monkeypatch):
     user_home = tmp_path / "home"
-    monkeypatch.setenv("MINIDSH_HOME", str(user_home))
+    monkeypatch.setenv("PYDSH_HOME", str(user_home))
     _write_user(settings={"storage": "jsonl"}, tmp_path=tmp_path, monkeypatch=monkeypatch)
 
     proj = tmp_path / "proj"
@@ -132,7 +132,7 @@ def test_project_settings_override(tmp_path, monkeypatch):
 
 
 def test_missing_files_return_empty(tmp_path, monkeypatch):
-    monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
+    monkeypatch.setenv("PYDSH_HOME", str(tmp_path))
     cfg = resolve_config(tmp_path / "nonexistent")
     assert cfg.models == []
     assert cfg.storage == "jsonl"
@@ -180,7 +180,7 @@ def test_temperature_parsed(tmp_path, monkeypatch):
 
 
 def test_save_and_load_models_roundtrip(tmp_path, monkeypatch):
-    monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
+    monkeypatch.setenv("PYDSH_HOME", str(tmp_path))
     path = save_json(user_models_path(), {"models": [{"id": "m", "apiKey": "k"}]}, secure=True)
     assert path.is_file()
     loaded = load_json(path)

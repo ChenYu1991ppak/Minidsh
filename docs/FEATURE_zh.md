@@ -28,7 +28,7 @@
 
 ## TUI 交互（替换 CLI `run`）
 
-- `minidsh`（无子命令）直接启动 Textual TUI，默认 cwd 为项目根；`replay` / `plugin` 保留为子命令。
+- `pydsh`（无子命令）直接启动 Textual TUI，默认 cwd 为项目根；`replay` / `plugin` 保留为子命令。
 - **视图模型解耦**：`transcript.fold`（事件→turn 树，纯函数不碰 Textual）+ Textual App。
 - **思考/回复分色流式显示**（rich.Text，思考 dim italic）。
 - **斜杠命令**：`/model`、`/thinking`、`/new`（进程内切新会话）、`/exit`。

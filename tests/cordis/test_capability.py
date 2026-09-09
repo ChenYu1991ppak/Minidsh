@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import (
+from pydsh.cordis import (
     Context,
     CapabilityDefinition,
     CapabilityProvider,
@@ -71,6 +71,6 @@ def test_consumer_assert_missing_service():
 
 
 def test_consumer_is_not_service():
-    from minidsh.cordis import Service
+    from pydsh.cordis import Service
 
     assert not issubclass(CapabilityConsumer, Service)

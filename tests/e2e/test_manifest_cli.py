@@ -5,9 +5,9 @@ import io
 import sys
 from pathlib import Path
 
-from minidsh.cordis import Context
-from minidsh.infrastructure.boot import cli as cli_module
-from minidsh.infrastructure.boot.cli import main
+from pydsh.cordis import Context
+from pydsh.infrastructure.boot import cli as cli_module
+from pydsh.infrastructure.boot.cli import main
 
 
 def _run_cli(argv, stdin_text=""):
@@ -31,7 +31,7 @@ def _fake_ctx():
 
 def _stub_app(monkeypatch, capture=None):
     """把 app 插件 apply 替换为 no-op（测试不启动真终端），可捕获 (ctx, args)。"""
-    from minidsh.infrastructure.boot import cli as cli_module
+    from pydsh.infrastructure.boot import cli as cli_module
 
     def fake_apply(ctx, args):
         if capture is not None:
@@ -87,11 +87,11 @@ def test_run_profile_path_vs_name(tmp_path, monkeypatch):
     # 名字（不存在）→ profile 名（被 load_project 接收）
     captured.clear()
     _run_cli(["--profile", "demo", "./demo"], stdin_text="")
-    # demo 不是文件也不在 ~/.minidsh/profiles/ → 被 _boot 转为 extra_bundle
+    # demo 不是文件也不在 ~/.pydsh/profiles/ → 被 _boot 转为 extra_bundle
     # 但 profile 参数仍传给 load_project（为 None，因 bundle 走 extra_bundles）
     assert captured["profile"] is None
     assert captured["argv_path"] is None
-    assert captured["extra_bundles"] == ["minidsh.demo"]
+    assert captured["extra_bundles"] == ["pydsh.demo"]
 
 
 def test_reject_invalid_storage_choice():
@@ -121,7 +121,7 @@ def test_tui_bare_and_dir_dispatch(tmp_path, monkeypatch):
 
 
 def test_replay_no_events(tmp_path, monkeypatch):
-    from minidsh.infrastructure.boot import cli as cli_module
+    from pydsh.infrastructure.boot import cli as cli_module
     monkeypatch.setattr(cli_module, "load_session_events", lambda *a, **k: [])
 
     code, _, err = _run_cli(["replay", str(tmp_path / "none.jsonl")])
@@ -132,7 +132,7 @@ def test_replay_no_events(tmp_path, monkeypatch):
 def test_plugin_subcommand_dispatch(monkeypatch):
     calls = {}
 
-    import minidsh.infrastructure.packaging as packaging
+    import pydsh.infrastructure.packaging as packaging
     monkeypatch.setattr(packaging, "plugin_add", lambda pkg: calls.update(add=pkg) or 0)
     monkeypatch.setattr(packaging, "plugin_remove", lambda name: calls.update(remove=name) or 0)
     monkeypatch.setattr(packaging, "plugin_list", lambda: calls.update(ls=True) or 0)

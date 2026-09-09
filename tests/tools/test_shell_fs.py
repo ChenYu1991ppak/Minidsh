@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import inspect
 
-from minidsh.packages.services.shell import ShellRequest, ShellResult, ShellService
-from minidsh.packages.services.fs import FsRequest, FsResult, FsService
+from pydsh.packages.services.shell import ShellRequest, ShellResult, ShellService
+from pydsh.packages.services.fs import FsRequest, FsResult, FsService
 
 import pytest
 
@@ -21,7 +21,7 @@ def test_shell_types():
 def test_shell_service_is_async_abstract():
     assert inspect.iscoroutinefunction(ShellService.execute)
     # execute 是未实现的抽象（子类必须覆写），直接调用应抛 NotImplementedError
-    from minidsh.cordis import Context
+    from pydsh.cordis import Context
 
     class S(ShellService):
         pass
@@ -47,7 +47,7 @@ def test_fs_service_is_async_abstract():
 
 def test_definitions_are_capability_definitions():
     """两个定义都是 CapabilityDefinition 子类（纯接口，非 Service）。"""
-    from minidsh.cordis import CapabilityDefinition, Service
+    from pydsh.cordis import CapabilityDefinition, Service
 
     assert issubclass(ShellService, CapabilityDefinition)
     assert issubclass(FsService, CapabilityDefinition)
@@ -58,7 +58,7 @@ def test_definitions_are_capability_definitions():
 
 def test_definitions_not_provided_by_import():
     """定义模块不自行注册服务：provider 才 provide（三角色职责分离）。"""
-    from minidsh.cordis import Context
+    from pydsh.cordis import Context
 
     ctx = Context()
     # 仅 import 定义，不激活任何插件 → 无 shell/fs 服务
@@ -71,8 +71,8 @@ def test_definitions_not_provided_by_import():
 
 async def test_fs_write_text_creates_file(tmp_path):
     """write_text 创建文件，内容正确。"""
-    from minidsh.cordis import Context
-    from minidsh.packages.services.fs.providers.local import LocalFsService
+    from pydsh.cordis import Context
+    from pydsh.packages.services.fs.providers.local import LocalFsService
 
     ctx = Context()
     svc = LocalFsService(ctx)
@@ -83,8 +83,8 @@ async def test_fs_write_text_creates_file(tmp_path):
 
 async def test_fs_write_text_overwrites_existing(tmp_path):
     """write_text 覆盖已有文件。"""
-    from minidsh.cordis import Context
-    from minidsh.packages.services.fs.providers.local import LocalFsService
+    from pydsh.cordis import Context
+    from pydsh.packages.services.fs.providers.local import LocalFsService
 
     ctx = Context()
     svc = LocalFsService(ctx)
@@ -96,8 +96,8 @@ async def test_fs_write_text_overwrites_existing(tmp_path):
 
 async def test_fs_edit_text_single_replace(tmp_path):
     """edit_text 替换第一个匹配（replace_all=False）。"""
-    from minidsh.cordis import Context
-    from minidsh.packages.services.fs.providers.local import LocalFsService
+    from pydsh.cordis import Context
+    from pydsh.packages.services.fs.providers.local import LocalFsService
 
     ctx = Context()
     svc = LocalFsService(ctx)
@@ -110,8 +110,8 @@ async def test_fs_edit_text_single_replace(tmp_path):
 
 async def test_fs_edit_text_replace_all(tmp_path):
     """edit_text 替换所有匹配（replace_all=True）。"""
-    from minidsh.cordis import Context
-    from minidsh.packages.services.fs.providers.local import LocalFsService
+    from pydsh.cordis import Context
+    from pydsh.packages.services.fs.providers.local import LocalFsService
 
     ctx = Context()
     svc = LocalFsService(ctx)
@@ -124,8 +124,8 @@ async def test_fs_edit_text_replace_all(tmp_path):
 
 async def test_fs_edit_text_no_match_unchanged(tmp_path):
     """edit_text 无匹配时文本不变。"""
-    from minidsh.cordis import Context
-    from minidsh.packages.services.fs.providers.local import LocalFsService
+    from pydsh.cordis import Context
+    from pydsh.packages.services.fs.providers.local import LocalFsService
 
     ctx = Context()
     svc = LocalFsService(ctx)
@@ -138,8 +138,8 @@ async def test_fs_edit_text_no_match_unchanged(tmp_path):
 
 async def test_fs_write_text_creates_parent_dirs(tmp_path):
     """write_text 自动创建父目录。"""
-    from minidsh.cordis import Context
-    from minidsh.packages.services.fs.providers.local import LocalFsService
+    from pydsh.cordis import Context
+    from pydsh.packages.services.fs.providers.local import LocalFsService
 
     ctx = Context()
     svc = LocalFsService(ctx)
@@ -150,8 +150,8 @@ async def test_fs_write_text_creates_parent_dirs(tmp_path):
 
 async def test_fs_edit_text_creates_file_if_not_exists(tmp_path):
     """edit_text 对不存在的文件：创建并写入 new_string。"""
-    from minidsh.cordis import Context
-    from minidsh.packages.services.fs.providers.local import LocalFsService
+    from pydsh.cordis import Context
+    from pydsh.packages.services.fs.providers.local import LocalFsService
 
     ctx = Context()
     svc = LocalFsService(ctx)

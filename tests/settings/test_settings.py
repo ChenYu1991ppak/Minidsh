@@ -3,19 +3,19 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.settings import (
+from pydsh.cordis import Context
+from pydsh.packages.services.settings import (
     SettingsService,
     SettingsRegisterOptions,
     deep_merge,
     validate_namespace,
 )
-from minidsh.packages.services.settings.providers.file import FileSettingsService
+from pydsh.packages.services.settings.providers.file import FileSettingsService
 
 
 @pytest.fixture()
 def svc(tmp_path, monkeypatch):
-    monkeypatch.setenv("MINIDSH_HOME", str(tmp_path / "minidsh-home"))
+    monkeypatch.setenv("PYDSH_HOME", str(tmp_path / "pydsh-home"))
     ctx = Context()
     service = FileSettingsService(ctx, path=tmp_path / "settings.json")
     return ctx, service
@@ -116,7 +116,7 @@ def test_persisted_to_disk(svc):
     scope = service.register("app", {"v": 0})
     scope.update({"v": 42})
     # 重新读文档确认已落盘
-    from minidsh.infrastructure.config.files import load_json
+    from pydsh.infrastructure.config.files import load_json
     assert load_json(service._path)["app"]["v"] == 42
 
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.infrastructure.bundle import Bundle, load_bundle, BUILTIN_BUNDLE_NAME, PluginRef
-from minidsh.infrastructure.profile import resolve_profile, profile_path
+from pydsh.infrastructure.bundle import Bundle, load_bundle, BUILTIN_BUNDLE_NAME, PluginRef
+from pydsh.infrastructure.profile import resolve_profile, profile_path
 
 
 # ---------- bundle ----------
@@ -13,18 +13,18 @@ from minidsh.infrastructure.profile import resolve_profile, profile_path
 def test_load_builtin_base_bundle():
     bundle = load_bundle(BUILTIN_BUNDLE_NAME)
     assert bundle is not None
-    assert bundle.name == "minidsh.base"
+    assert bundle.name == "pydsh.base"
     assert len(bundle.plugins) == 36  # 内置 base 有 36 个插件（含 web-search-ddg）
     names = [r.name for r in bundle.plugins]
-    assert names[0] == "minidsh.config"
-    assert "minidsh.persistence-jsonl" in names
-    assert "minidsh.tool-bash" in names
-    assert "minidsh.subprocess" in names
-    assert "minidsh.web" in names
-    assert "minidsh.tool-lsp" in names
-    assert "minidsh.tool-write" in names
-    assert "minidsh.tool-glob" in names
-    assert "minidsh.tool-todo" in names
+    assert names[0] == "pydsh.config"
+    assert "pydsh.persistence-jsonl" in names
+    assert "pydsh.tool-bash" in names
+    assert "pydsh.subprocess" in names
+    assert "pydsh.web" in names
+    assert "pydsh.tool-lsp" in names
+    assert "pydsh.tool-write" in names
+    assert "pydsh.tool-glob" in names
+    assert "pydsh.tool-todo" in names
 
 
 def test_load_unknown_bundle_returns_none():
@@ -43,30 +43,30 @@ def test_bundle_is_frozen_entity():
 def test_default_profile_is_base():
     merged = resolve_profile(None)
     assert len(merged) == 36
-    assert merged[0].name == "minidsh.config"
+    assert merged[0].name == "pydsh.config"
 
 
 def test_profile_path_location(tmp_path, monkeypatch):
-    monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
+    monkeypatch.setenv("PYDSH_HOME", str(tmp_path))
     p = profile_path("demo")
     assert p == tmp_path / "profiles" / "demo.yaml"
 
 
 def test_custom_profile_with_base_only(tmp_path, monkeypatch):
-    monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
+    monkeypatch.setenv("PYDSH_HOME", str(tmp_path))
     (tmp_path / "profiles").mkdir(parents=True)
     (tmp_path / "profiles" / "demo.yaml").write_text(
-        "bundles:\n  - minidsh.base\n", encoding="utf-8"
+        "bundles:\n  - pydsh.base\n", encoding="utf-8"
     )
     merged = resolve_profile(profile="demo")
     assert len(merged) == 36
 
 
 def test_custom_profile_unknown_bundle_warns_and_continues(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
+    monkeypatch.setenv("PYDSH_HOME", str(tmp_path))
     (tmp_path / "profiles").mkdir(parents=True)
     (tmp_path / "profiles" / "demo.yaml").write_text(
-        "bundles:\n  - minidsh.base\n  - ghost-bundle\n", encoding="utf-8"
+        "bundles:\n  - pydsh.base\n  - ghost-bundle\n", encoding="utf-8"
     )
     merged = resolve_profile(profile="demo")
     assert len(merged) == 36
@@ -74,14 +74,14 @@ def test_custom_profile_unknown_bundle_warns_and_continues(tmp_path, monkeypatch
 
 
 def test_missing_profile_returns_default(tmp_path, monkeypatch):
-    monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
+    monkeypatch.setenv("PYDSH_HOME", str(tmp_path))
     merged = resolve_profile(profile="nonexistent")
     assert len(merged) == 36
 
 
 def test_profile_plugins_accumulate(tmp_path, monkeypatch):
     """通过 --profile 路径显式指定 profile，plugins 追加到 base（累加语义，非覆盖）。"""
-    monkeypatch.setenv("MINIDSH_HOME", str(tmp_path))
+    monkeypatch.setenv("PYDSH_HOME", str(tmp_path))
     (tmp_path / "profile.yaml").write_text(
         "plugins:\n  - my-extra\n", encoding="utf-8"
     )
@@ -96,7 +96,7 @@ def test_profile_plugins_accumulate(tmp_path, monkeypatch):
 
 def test_loader_uses_profile_not_hardcoded_bundles():
     """loader 不走旧硬编码 bundle 机制，走 resolve_profile + extra_bundles 参数。"""
-    import minidsh.infrastructure.boot.loader as loader
+    import pydsh.infrastructure.boot.loader as loader
 
     src = open(loader.__file__, encoding="utf-8").read()
     assert "resolve_profile" in src
@@ -105,9 +105,9 @@ def test_loader_uses_profile_not_hardcoded_bundles():
 
 
 def test_loader_quiet_removes_trace_render():
-    import minidsh.infrastructure.boot.loader as loader
+    import pydsh.infrastructure.boot.loader as loader
 
     entries = loader._profile_plugins(None, None, None, quiet=True)
     names = [r.name for r in entries]
-    assert "minidsh.trace-render" not in names
+    assert "pydsh.trace-render" not in names
     assert len(entries) == 35

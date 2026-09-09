@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
+from pydsh.cordis import Context
 
 
 def _plugin(events, default_value="?"):

@@ -1,9 +1,9 @@
 """M1 验收测试：token-meter 独立 seam（完整回放快照）。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.session import SessionStore
-from minidsh.packages.services.token_meter import TokenMeterService
+from pydsh.cordis import Context
+from pydsh.packages.services.session import SessionStore
+from pydsh.packages.services.token_meter import TokenMeterService
 
 
 def _ctx():
@@ -56,7 +56,7 @@ def test_usage_anchor_replaces_heuristic():
 
 
 def test_estimate_message_counts_tool_calls():
-    from minidsh.packages.services.token_meter import estimate_message
+    from pydsh.packages.services.token_meter import estimate_message
 
     msg = {
         "role": "assistant",

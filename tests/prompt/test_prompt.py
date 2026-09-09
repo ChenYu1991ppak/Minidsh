@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.prompt import PromptAssembly, PromptSection, SystemPromptService, render_prompt
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.cordis import Context
+from pydsh.packages.services.prompt import PromptAssembly, PromptSection, SystemPromptService, render_prompt
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
 
 
 def _ctx() -> tuple[Context, SystemPromptService]:

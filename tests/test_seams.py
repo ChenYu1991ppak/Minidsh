@@ -1,18 +1,18 @@
 """T19 验收测试：seam 预留模块（approval/web/lsp/rpc）契约存在 + 可扩展。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.approval import ApprovalProvider
-from minidsh.packages.services.web import WebRuntime, WebFetchProvider, WebFetchRequest, WebFetchResult, WebFetchBody
-from minidsh.packages.services.lsp import LspService, LspProvider, LspQueryRequest, LspPosition, LspQueryResult
-from minidsh.packages.services.rpc import RpcGateway, NoopRpcGateway
+from pydsh.cordis import Context
+from pydsh.packages.services.approval import ApprovalProvider
+from pydsh.packages.services.web import WebRuntime, WebFetchProvider, WebFetchRequest, WebFetchResult, WebFetchBody
+from pydsh.packages.services.lsp import LspService, LspProvider, LspQueryRequest, LspPosition, LspQueryResult
+from pydsh.packages.services.rpc import RpcGateway, NoopRpcGateway
 
 
 async def test_approval_seam_policy_never():
     ctx = Context()
     ApprovalProvider(ctx)  # provider 构造即注册 ctx.approval
     ctx.approval.set_policy("never")
-    from minidsh.packages.services.approval import ApprovalRequest
+    from pydsh.packages.services.approval import ApprovalRequest
     req = ApprovalRequest(agent=type("A", (), {"session": None})(), tool_name="bash")
     outcome = await ctx.approval.request(req)
     assert outcome == "rejected"
@@ -21,7 +21,7 @@ async def test_approval_seam_policy_never():
 async def test_approval_seam_ask_unavailable():
     ctx = Context()
     ApprovalProvider(ctx)
-    from minidsh.packages.services.approval import ApprovalRequest
+    from pydsh.packages.services.approval import ApprovalRequest
     req = ApprovalRequest(agent=type("A", (), {"session": None})(), tool_name="bash")
     outcome = await ctx.approval.request(req)
     assert outcome == "unavailable"  # 无应答者 → fail-closed
@@ -33,7 +33,7 @@ async def test_web_seam_registers_and_selects_provider():
     assert ctx.has("web")
 
     # 无 provider → WEB_PROVIDER_UNAVAILABLE
-    from minidsh.packages.services.web import WebError
+    from pydsh.packages.services.web import WebError
     try:
         await ctx.web.fetch(WebFetchRequest(url="http://example.com"))
         assert False, "应该抛 WEB_PROVIDER_UNAVAILABLE"

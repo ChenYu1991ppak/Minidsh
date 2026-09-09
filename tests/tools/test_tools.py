@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import (
+from pydsh.cordis import Context
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import (
     PreToolDecision,
     PostToolDecision,
     ToolDefinition,
@@ -14,8 +14,8 @@ from minidsh.packages.services.tool_runtime import (
     ToolResult,
     ToolRuntime,
 )
-from minidsh.packages.tools import bash as tool_bash
-from minidsh.packages.tools import read_file as tool_read
+from pydsh.packages.tools import bash as tool_bash
+from pydsh.packages.tools import read_file as tool_read
 from tests.helpers.world import plug_execution_world
 
 
@@ -235,7 +235,7 @@ async def test_bash_nonzero_exit_reports_stderr():
 
 
 def test_scoped_register_isolates_per_scope():
-    from minidsh.packages.core.scope import createScope, scopeOf
+    from pydsh.packages.core.scope import createScope, scopeOf
 
     ctx, tools = _ctx()
     tools.register(_def("global-tool"))     # 全局层
@@ -253,7 +253,7 @@ def test_scoped_register_isolates_per_scope():
 
 
 def test_scope_dispose_removes_scoped_tool():
-    from minidsh.packages.core.scope import createScope, scopeOf
+    from pydsh.packages.core.scope import createScope, scopeOf
 
     ctx, tools = _ctx()
     scope = createScope(ctx)

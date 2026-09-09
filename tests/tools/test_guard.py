@@ -1,9 +1,9 @@
 """M2 验收测试：GuardRegistry + ToolGuard + repeat-tool-reminder。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import (
+from pydsh.cordis import Context
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import (
     ToolDefinition,
     ToolOutput,
     ToolExecution,

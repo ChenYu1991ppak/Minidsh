@@ -16,7 +16,7 @@ session 事件流 / LLM 适配 / compaction，做到可运行、可观测、可�
 
 - 对齐目标是官方 [`packages/*/src` + `docs/subsystems/*`]，机制名与逐章注释对齐教学仓 `deepseek-harness-anatomy/`（只读）。
 - **忠实 > 精简**：先保证机制形态对（seam 三角色、事件流、提供方可替换），再谈实现难度。
-- 参考仓库 `deepseek-harness-anatomy/` 是**只读**的独立 git 仓库，改动只发生在 `minidsh/` 与 `tests/`。
+- 参考仓库 `deepseek-harness-anatomy/` 是**只读**的独立 git 仓库，改动只发生在 `pydsh/` 与 `tests/`。
 
 ## 2. 世界观（三条铁律）
 
@@ -43,11 +43,11 @@ session 事件流 / LLM 适配 / compaction，做到可运行、可观测、可�
 ## 4. 目录职责（不可混淆）
 
 ```
-minidsh/
+pydsh/
 ├── cordis/                # 内核，独立（等价官方 @deepseek-ai/cordis）
 │   └── capability.py      #   三角色抽象基类
 ├── infrastructure/        # 支撑：不是能力，是装配/配置/打包/前端
-│   ├── boot/              #   cli（minidsh TUI 入口 / replay / plugin）+ load_project
+│   ├── boot/              #   cli（pydsh TUI 入口 / replay / plugin）+ load_project
 │   ├── bundle/            #   Bundle / PluginRef / merge / build_context
 │   ├── config/            #   Config/ModelSpec + resolve + files + providers
 │   ├── packaging/         #   entry-point 发现 + plugin 命令
@@ -58,7 +58,7 @@ minidsh/
 │   │   └── scope/          #   ScopeKey / Scope / ScopedLayers / createScope
 │   ├── services/           # 提供 ctx 服务的能力（definition + providers/ + 辅助）
 │   └── tools/              # 消费方工具（bash.py / read_file.py）
-└── bundles/               # 激活清单 minidsh.base.yaml
+└── bundles/               # 激活清单 pydsh.base.yaml
 ```
 
 **四个分区定位（勿混淆）**：
@@ -80,7 +80,7 @@ minidsh/
 
 ## 5. 能力三角色规约（建一个新能力的流程）
 
-定义见 [cordis/capability.py](../minidsh/cordis/capability.py)：
+定义见 [cordis/capability.py](../pydsh/cordis/capability.py)：
 
 - `CapabilityDefinition`：**纯契约**——只声明类属性 `service_name` + 接口方法，不自注册。定义放 `services/<x>/definition.py`。
 - `CapabilityProvider`：`Definition + Service`，**构造即注册**到 `service_name`，初始化覆写 `_init(ctx, *args, **kw)`（不要手写 `super().__init__(ctx, "x")`）。放 `services/<x>/providers/<name>.py`。
@@ -97,11 +97,11 @@ minidsh/
 
 ## 6. 插件规范
 
-**四形态**（[normalize_plugin](../minidsh/cordis/plugin.py) 归一）：
+**四形态**（[normalize_plugin](../pydsh/cordis/plugin.py) 归一）：
 
 ```python
 # 1) module（本项目消费方工具/服务 provider 的主流形态）
-name = "minidsh.tool-bash"
+name = "pydsh.tool-bash"
 inject = ["tools", "shell", "config"]
 def apply(ctx): ...
 
@@ -110,9 +110,9 @@ def apply(ctx): ...
 # 4) 函数
 ```
 
-**发现**：entry-point 组 `minidsh.plugins`（`pyproject.toml`），条目 `name = 插件名`，`value = 可 import 模块`。
+**发现**：entry-point 组 `pydsh.plugins`（`pyproject.toml`），条目 `name = 插件名`，`value = 可 import 模块`。
 内置与第三方插件**同走 entry-point 发现**（`entry_point_resolver`，无 registry 短路）。
-新增一个内置插件 = ① 写模块 ② 在 pyproject 加 entry-point ③（如需默认激活）加进 `bundles/minidsh.base.yaml`。
+新增一个内置插件 = ① 写模块 ② 在 pyproject 加 entry-point ③（如需默认激活）加进 `bundles/pydsh.base.yaml`。
 
 ## 7. bundle / profile 规约
 
@@ -120,7 +120,7 @@ def apply(ctx): ...
 - `Bundle(name, plugins, remove)`；bundle 文件 = 顶层 `plugins:` 列表（可有 `remove:`）。
 - `profile` 文件 = 三键 `bundles:` / `plugins:` / `remove:`。
 - **覆盖链**（后覆盖前）：
-  `默认 [minidsh.base] < 命名 profile < 项目 <project>/.minidsh/profile.yaml < 用户 ~/.minidsh/profile.yaml < argv（--profile 给路径时）`
+  `默认 [pydsh.base] < 命名 profile < 项目 <project>/.pydsh/profile.yaml < 用户 ~/.pydsh/profile.yaml < argv（--profile 给路径时）`
 - `--profile` 合一：文件存在 → 当 argv 覆盖路径；否则 → 当命名 profile 名。
 - provider 选择走清单：CLI `--storage jsonl|sqlite` 转成「移除未选中的 provider、追加选中的」，**不走进 provider 内部 if 分支**。
 
@@ -130,7 +130,7 @@ def apply(ctx): ...
 - `models.json`——模型配置，每模型内嵌 `apiKey`（**敏感**，写盘 `chmod 600`，永不提交进 git）。
 - `settings.json`——harness 设置（storage / compaction / tools 白名单），非密。
 
-路径：用户级 `~/.minidsh/`（或 `$MINIDSH_HOME`），项目级 `<project>/.minidsh/`。
+路径：用户级 `~/.pydsh/`（或 `$PYDSH_HOME`），项目级 `<project>/.pydsh/`。
 优先级：项目级覆盖用户级；模型列表**拼接**（同名 id 项目赢），settings 键**项覆盖**。
 当前模型：`currentModel` > `availableModels` 首位。
 
@@ -140,7 +140,7 @@ def apply(ctx): ...
 
 - `ToolDefinition(name, description, parameters[OpenAI JSON Schema], execute[async], output[ToolOutput(schema, render)])`
 - `ToolOutput.schema` 声明**规范值**类型、`render(args, value)->str` 转成给模型的内容。
-- 执行管线（[runtime.py](../minidsh/packages/services/tool_runtime/runtime.py)）：
+- 执行管线（[runtime.py](../pydsh/packages/services/tool_runtime/runtime.py)）：
   `pre-execute 瀑布 → 单调 guard → execute → post-execute 瀑布`，产出 `ToolResult` 并广播 `tools/result`。
 - 参数取**规范值**（`execute` 收 dict），JSON 反序列化由 loop 做（`_parse_arguments`）。
 - 工具名沿用官方（`bash`/`read_file`/`skill-catalog`/`task`）。
@@ -151,7 +151,7 @@ def apply(ctx): ...
 **seam**：`llm/definition.py` 定义 `LlmRuntime.stream` + `Chunk`（内核/loop 不 import openai
 类型）；`llm/providers/openai.py` 是唯一 import openai 的地方。将来加 anthropic = 新增 provider。
 
-**思考五档与软映射**（[softmap.py](../minidsh/packages/services/llm/softmap.py)）：
+**思考五档与软映射**（[softmap.py](../pydsh/packages/services/llm/softmap.py)）：
 - 统一枚举 `reasoningEffort`：`off / minimal / low / medium / high`（默认 `medium`），
   存 `ModelSpec.reasoning_effort`，非法档位解析期抛 `ValueError`（fail fast）。
 - **软映射层是纯函数、只认 model id 家族（前缀）**，无视 vendor 字段（对齐 claw-code）。
@@ -177,7 +177,7 @@ def apply(ctx): ...
 
 ## 10. 会话事件契约
 
-- `SessionEventType` 白名单（[event.py](../minidsh/packages/services/session/event.py)）：
+- `SessionEventType` 白名单（[event.py](../pydsh/packages/services/session/event.py)）：
   `user-message / assistant-chunk / assistant-message / reasoning-chunk / tool-call /
   tool-result / model-change / skill-loaded / subagent-spawn / subagent-result /
   compaction / error`。
@@ -191,14 +191,14 @@ def apply(ctx): ...
 - **pi-tui 前端**：TypeScript + `@earendil-works/pi-tui`，独立 Node.js 进程，经 ACP JSON-RPC stdio 协议通信。
   源码在 `infrastructure/tui/pi-tui/`；启动插件 `app_pi_tui.py` spawn Node.js 子进程。
 - **进程隔离**：Python 端跑 agent/session/tools，Node 端只管终端渲染+输入，职责清晰，互不阻塞。
-- **启动**：`minidsh --profile tui` spawn pi-tui 前端子进程并等待其退出。
-- 无 `run` 子命令：`minidsh [dir]`（dir 缺省 cwd）直接启动 TUI。
+- **启动**：`pydsh --profile tui` spawn pi-tui 前端子进程并等待其退出。
+- 无 `run` 子命令：`pydsh [dir]`（dir 缺省 cwd）直接启动 TUI。
 
 ## 11. 命名规约（汇总表）
 
 | 项 | 约定 | 例 |
 |---|---|---|
-| 插件名（entry-point 键 + module `name`） | `minidsh.<小写连字符>` | `minidsh.tool-bash` / `minidsh.persistence-sqlite` |
+| 插件名（entry-point 键 + module `name`） | `pydsh.<小写连字符>` | `pydsh.tool-bash` / `pydsh.persistence-sqlite` |
 | 服务名（`service_name`） | camelCase，对齐官方 `ctx.<name>` | `systemPrompt` / `agent_loop` / `sessionPersistence` |
 | 事件名 | `domain/action` 或 kebab-case | `tools/change` / `assistant-message` |
 | 目录/模块 | 小写下划线 | `tool_runtime` / `read_file.py` |
@@ -218,13 +218,13 @@ def apply(ctx): ...
 - **执行世界装配**：shell-local 依赖 subprocess，测试里用 `tests/helpers/world.py` 的 `plug_execution_world(ctx)` 一次插好 subprocess→shell→fs，再 plugin 工具。
 - **bwrap 测试 skip 门控**：sandbox 用 `pytest.mark.skipif(shutil.which("bwrap") is None)`，无 bwrap 环境跳过（不假装 full）。
 - **TUI 测试**：pi-tui 前端目前无自动测试（需真实 TTY 环境）。
-- **隔离 `MINIDSH_HOME`**：`tests/conftest.py` autouse fixture 把用户配置目录指向 tmp（防止读到真实 apiKey）。
+- **隔离 `PYDSH_HOME`**：`tests/conftest.py` autouse fixture 把用户配置目录指向 tmp（防止读到真实 apiKey）。
 - 注意：**必须用 `python -m pytest` 跑**（裸 `pytest` 缺 `tests` 包路径，collect 会报 `No module named 'tests.helpers'`）。改了 pyproject 的 entry-point 后要 `pip install -e . --no-build-isolation` 才会刷新发现缓存。
 
 ## 14. 版本 / 发布 / 敏感信息
 
-- 版本号**单一真相源**：`minidsh/__init__.py` 的 `__version__`（pyproject 经 `attr` 读它）。
-- 打包：setuptools，**只发布 `minidsh/` 库**（`packages.find where=["minidsh"]`）；tests/examples/doc 不随库分发，但 doc/ 应进 git（见下）。
+- 版本号**单一真相源**：`pydsh/__init__.py` 的 `__version__`（pyproject 经 `attr` 读它）。
+- 打包：setuptools，**只发布 `pydsh/` 库**（`packages.find where=["pydsh"]`）；tests/examples/doc 不随库分发，但 doc/ 应进 git（见下）。
 - **敏感信息**：`apiKey` 明文只在 `models.json`（`chmod 600` + gitignore）；`.env`/`*.key` 永不提交。
 
 ---

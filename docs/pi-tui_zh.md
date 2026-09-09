@@ -32,7 +32,7 @@ mini-dsh 以 pi-tui 作为 TUI 前端：
 │ 终端（用户）                                          │
 ├─────────────────────────────────────────────────────┤
 │ pi-tui 前端 (Node.js)                                │
-│  ├─ acp-client.ts  ── spawn minidsh --profile acp   │
+│  ├─ acp-client.ts  ── spawn pydsh --profile acp   │
 │  ├─ session-state.ts ── 本地会话投影                  │
 │  └─ index.ts         ── pi-tui 组件树                │
 ├─────────────────────────────────────────────────────┤
@@ -49,13 +49,13 @@ mini-dsh 以 pi-tui 作为 TUI 前端：
 
 ```bash
 # 1. 安装前端依赖
-cd /path/to/minidsh/infrastructure/tui/pi-tui && npm install && npm run build
+cd /path/to/pydsh/infrastructure/tui/pi-tui && npm install && npm run build
 
-# 2. 启动（需 Python 后端已安装 minidsh）
-cd /path/to/project && npx tsx /path/to/minidsh/infrastructure/tui/pi-tui/src/index.ts
+# 2. 启动（需 Python 后端已安装 pydsh）
+cd /path/to/project && npx tsx /path/to/pydsh/infrastructure/tui/pi-tui/src/index.ts
 
 # 2b. 或经 launcher（后续）
-minidsh --profile tui   # 自动 spawn pi-tui 前端
+pydsh --profile tui   # 自动 spawn pi-tui 前端
 ```
 
 ## 测试

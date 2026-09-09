@@ -3,19 +3,19 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.loop import AgentLoop
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
-from minidsh.packages.services.session import SessionStore
-from minidsh.packages.services.subagent import (
+from pydsh.cordis import Context
+from pydsh.packages.services.loop import AgentLoop
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.packages.services.session import SessionStore
+from pydsh.packages.services.subagent import (
     SubagentError,
     SubagentRegistry,
     InProcessSubagentProvider,
     make_task_tool,
 )
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
-from minidsh.packages.tools import bash as tool_bash
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
+from pydsh.packages.tools import bash as tool_bash
 from tests.helpers.world import plug_execution_world
 
 from tests.helpers.fake_llm import make_fake_llm

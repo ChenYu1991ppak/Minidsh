@@ -1,0 +1,39 @@
+# 内置 base 清单（随包分发，对齐官方 bundle 声明式）。
+# 这份是「激活哪些插件」的声明；实现是各能力 providers/ 下的静态 module 插件。
+plugins:
+  - pydsh.config
+  - pydsh.root
+  - pydsh.sessions
+  - pydsh.prompt
+  - pydsh.tools
+  - pydsh.llm-openai
+  - pydsh.subprocess
+  - pydsh.sandbox
+  - pydsh.shell-local
+  - pydsh.fs-local
+  - pydsh.tool-bash
+  - pydsh.tool-read
+  - pydsh.tool-write
+  - pydsh.tool-edit
+  - pydsh.tool-glob
+  - pydsh.tool-grep
+  - pydsh.tool-todo
+  - pydsh.tool-ask-user
+  - pydsh.skills
+  - pydsh.subagents
+  - pydsh.agents
+  - pydsh.projections
+  - pydsh.settings
+  - pydsh.agents-md
+  - pydsh.loop
+  - pydsh.token-meter
+  - pydsh.approval
+  - pydsh.web
+  - pydsh.web-fetch
+  - pydsh.web-search-ddg
+  - pydsh.tool-web
+  - pydsh.lsp
+  - pydsh.tool-lsp
+  - pydsh.compaction
+  - pydsh.trace-render
+  - pydsh.persistence-jsonl

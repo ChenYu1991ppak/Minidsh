@@ -5,10 +5,10 @@ import json
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.session import Session, SessionEvent, SessionStore
-from minidsh.packages.services.persistence import PersistenceCoordinator
-from minidsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
+from pydsh.cordis import Context
+from pydsh.packages.services.session import Session, SessionEvent, SessionStore
+from pydsh.packages.services.persistence import PersistenceCoordinator
+from pydsh.packages.services.persistence.providers.jsonl import JsonlSessionPersistence
 
 
 def _harness(tmp_path):

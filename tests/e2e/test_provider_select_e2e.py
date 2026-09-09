@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import types
 
-from minidsh.cordis import Context
-from minidsh.packages.services.shell import ShellService, ShellRequest, ShellResult
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime
-from minidsh.packages.services.shell.providers import local as shell_local   # base 默认 provider
-from minidsh.packages.tools import bash as tool_bash
-from minidsh.infrastructure.bundle import (
+from pydsh.cordis import Context
+from pydsh.packages.services.shell import ShellService, ShellRequest, ShellResult
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime
+from pydsh.packages.services.shell.providers import local as shell_local   # base 默认 provider
+from pydsh.packages.tools import bash as tool_bash
+from pydsh.infrastructure.bundle import (
     PluginRef,
     merge_plugins,
     apply_removes,
@@ -47,21 +47,21 @@ def _remote_provider_module():
 def test_profile_remove_then_add_swaps_provider_in_list():
     """merge + remove 后，激活列表里 shell provider 从 local 换成 remote。"""
     builtin = [
-        PluginRef("minidsh.config"),
-        PluginRef("minidsh.shell-local"),      # base 默认 provider
-        PluginRef("minidsh.tool-bash"),
+        PluginRef("pydsh.config"),
+        PluginRef("pydsh.shell-local"),      # base 默认 provider
+        PluginRef("pydsh.tool-bash"),
     ]
     # 覆盖层：移除 local、追加 remote
     user_plugins = [PluginRef("my-shell-remote")]
-    user_removes = ["minidsh.shell-local"]
+    user_removes = ["pydsh.shell-local"]
 
     merged = merge_plugins([builtin, user_plugins])
     final = apply_removes(merged, user_removes)
 
     names = [r.name for r in final]
-    assert "minidsh.shell-local" not in names
+    assert "pydsh.shell-local" not in names
     assert "my-shell-remote" in names
-    assert "minidsh.tool-bash" in names  # consumer 不动
+    assert "pydsh.tool-bash" in names  # consumer 不动
 
 
 # ---------- 装配层：换 provider 后端到端生效 ----------
@@ -81,6 +81,6 @@ async def test_full_swap_activates_remote_provider():
 
     # 关键断言：ctx.shell 是 remote，consumer（tool-bash，inject=["tools","shell","config"]）
     # 无改动即用新结果
-    from minidsh.packages.services.tool_runtime import ToolExecution
+    from pydsh.packages.services.tool_runtime import ToolExecution
     result = await tools.execute(ToolExecution("c1", "bash", {"cmd": "echo whatever"}))
     assert result.content == "[remote] 结果"   # remote 覆盖了 local 的 shell 服务

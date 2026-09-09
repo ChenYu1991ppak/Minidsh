@@ -3,7 +3,7 @@
 
 SHELL := /bin/bash
 ROOT := $(shell pwd)
-PI_TUI := minidsh/infrastructure/tui/pi-tui
+PI_TUI := pydsh/infrastructure/tui/pi-tui
 SETUP := bash scripts/setup.sh
 
 .PHONY: help install tui test clean
@@ -35,7 +35,7 @@ $(PI_TUI)/dist/index.js: $(PI_TUI)/node_modules
 
 tui: install
 	@echo "[make] 启动 pi-tui TUI..."
-	@minidsh --profile tui $(CURDIR)
+	@pydsh --profile tui $(CURDIR)
 
 # ── 测试 ──────────────────────────────────────────────────────────────────────
 

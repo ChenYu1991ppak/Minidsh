@@ -99,7 +99,7 @@ step "安装 Python 依赖"
 
 step "安装 pi-tui 前端依赖"
 
-PI_TUI_DIR="$PROJECT_ROOT/minidsh/infrastructure/tui/pi-tui"
+PI_TUI_DIR="$PROJECT_ROOT/pydsh/infrastructure/tui/pi-tui"
 cd "$PI_TUI_DIR"
 npm install
 npm run build
@@ -112,10 +112,10 @@ step "安装完成！"
 echo ""
 echo -e "  ${BOLD}下一步：配置模型${NC}"
 echo ""
-echo -e "  在 ${BOLD}~/.minidsh/models.json${NC} 中填入你的 API key："
+echo -e "  在 ${BOLD}~/.pydsh/models.json${NC} 中填入你的 API key："
 echo ""
-echo -e "  ${YELLOW}mkdir -p ~/.minidsh${NC}"
-echo -e "  ${YELLOW}cat > ~/.minidsh/models.json << 'EOF'${NC}"
+echo -e "  ${YELLOW}mkdir -p ~/.pydsh${NC}"
+echo -e "  ${YELLOW}cat > ~/.pydsh/models.json << 'EOF'${NC}"
 echo "  {"
 echo "    \"currentModel\": \"deepseek\","
 echo "    \"availableModels\": ["

@@ -16,7 +16,7 @@ session event stream / LLM adaptation / compaction, achieving runnable, observab
 
 - The alignment target is the official `packages/*/src` + `docs/subsystems/*`; mechanism names and chapter-by-chapter annotations align with the teaching repository `deepseek-harness-anatomy/` (read-only).
 - **Fidelity > simplification**: ensure the mechanism shape is correct first (seam tri-role, event stream, replaceable providers), then worry about implementation difficulty.
-- The reference repository `deepseek-harness-anatomy/` is a **read-only** standalone git repo; changes happen only in `minidsh/` and `tests/`.
+- The reference repository `deepseek-harness-anatomy/` is a **read-only** standalone git repo; changes happen only in `pydsh/` and `tests/`.
 
 ## 2. Worldview (Three Iron Laws)
 
@@ -43,11 +43,11 @@ The kernel is **synchronous and single-threaded** (spec §11-5). LLM streaming i
 ## 4. Directory Responsibilities (do not mix)
 
 ```
-minidsh/
+pydsh/
 ├── cordis/                # Kernel, independent (equivalent to official @deepseek-ai/cordis)
 │   └── capability.py      #   Tri-role abstract base classes
 ├── infrastructure/        # Support: not capabilities, but assembly/config/packaging/frontends
-│   ├── boot/              #   cli (minidsh TUI entry / replay / plugin) + load_project
+│   ├── boot/              #   cli (pydsh TUI entry / replay / plugin) + load_project
 │   ├── bundle/            #   Bundle / PluginRef / merge / build_context
 │   ├── config/            #   Config/ModelSpec + resolve + files + providers
 │   ├── packaging/         #   entry-point discovery + plugin commands
@@ -58,7 +58,7 @@ minidsh/
 │   │   └── scope/         #   ScopeKey / Scope / ScopedLayers / createScope
 │   ├── services/          # Capabilities that provide ctx services (definition + providers/ + helpers)
 │   └── tools/             # Consumer tools (bash.py / read_file.py)
-└── bundles/               # Activation manifests (minidsh.base.yaml, etc.)
+└── bundles/               # Activation manifests (pydsh.base.yaml, etc.)
 ```
 
 **Four partition roles (do not mix)**:
@@ -72,7 +72,7 @@ minidsh/
 
 ## 5. Capability Tri-role Specification (process for building a new capability)
 
-Definitions in [cordis/capability.py](../minidsh/cordis/capability.py):
+Definitions in [cordis/capability.py](../pydsh/cordis/capability.py):
 
 - `CapabilityDefinition`: **pure contract** — only declares class attribute `service_name` + interface methods, never self-registers. Place in `services/<x>/definition.py`.
 - `CapabilityProvider`: `Definition + Service`, **self-registering on construction** to `service_name`, override `_init(ctx, *args, **kw)` for initialization (don't manually write `super().__init__(ctx, "x")`). Place in `services/<x>/providers/<name>.py`.
@@ -89,11 +89,11 @@ Definitions in [cordis/capability.py](../minidsh/cordis/capability.py):
 
 ## 6. Plugin Specification
 
-**Four forms** (normalized by [normalize_plugin](../minidsh/cordis/plugin.py)):
+**Four forms** (normalized by [normalize_plugin](../pydsh/cordis/plugin.py)):
 
 ```python
 # 1) module (the mainstream form for consumer tools / service providers in this project)
-name = "minidsh.tool-bash"
+name = "pydsh.tool-bash"
 inject = ["tools", "shell", "config"]
 def apply(ctx): ...
 
@@ -102,9 +102,9 @@ def apply(ctx): ...
 # 4) function
 ```
 
-**Discovery**: entry-point group `minidsh.plugins` (`pyproject.toml`), with entry `name = plugin name`, `value = importable module`.
+**Discovery**: entry-point group `pydsh.plugins` (`pyproject.toml`), with entry `name = plugin name`, `value = importable module`.
 Built-in and third-party plugins **use the same entry-point discovery** (`entry_point_resolver`, no registry shortcut).
-Adding a new built-in plugin = ① write the module ② add an entry-point in pyproject ③ (if default-activated) add to `bundles/minidsh.base.yaml`.
+Adding a new built-in plugin = ① write the module ② add an entry-point in pyproject ③ (if default-activated) add to `bundles/pydsh.base.yaml`.
 
 ## 7. Bundle / Profile Specification
 
@@ -112,7 +112,7 @@ Adding a new built-in plugin = ① write the module ② add an entry-point in py
 - `Bundle(name, plugins, remove)`; bundle file = top-level `plugins:` list (optionally with `remove:`).
 - `profile` file = three keys: `bundles:` / `plugins:` / `remove:`.
 - **Overlay chain** (later overrides earlier):
-  `default [minidsh.base] < named profile < project <project>/.minidsh/profile.yaml < user ~/.minidsh/profile.yaml < argv (when --profile points to a file)`
+  `default [pydsh.base] < named profile < project <project>/.pydsh/profile.yaml < user ~/.pydsh/profile.yaml < argv (when --profile points to a file)`
 - `--profile` dual-purpose: file exists → argv overlay path; otherwise → named profile name.
 - Provider selection goes through the manifest: CLI `--storage jsonl|sqlite` is translated into "remove the unselected providers, append the selected" — **never enters a provider-internal if branch**.
 
@@ -122,7 +122,7 @@ Two files (aligned with CodeBuddy):
 - `models.json` — model configuration, each model embeds `apiKey` (**sensitive**, written with `chmod 600`, never committed to git).
 - `settings.json` — harness settings (storage / compaction / tool whitelist), non-secret.
 
-Paths: user-level `~/.minidsh/` (or `$MINIDSH_HOME`), project-level `<project>/.minidsh/`.
+Paths: user-level `~/.pydsh/` (or `$PYDSH_HOME`), project-level `<project>/.pydsh/`.
 Priority: project-level overrides user-level; model lists are **concatenated** (same-name id wins at project level), settings keys are **item-overridden**.
 Current model: `currentModel` > first entry in `availableModels`.
 
@@ -132,7 +132,7 @@ Current model: `currentModel` > first entry in `availableModels`.
 
 - `ToolDefinition(name, description, parameters[OpenAI JSON Schema], execute[async], output[ToolOutput(schema, render)])`
 - `ToolOutput.schema` declares the **canonical value** type, `render(args, value)->str` turns it into model-facing content.
-- Execution pipeline ([runtime.py](../minidsh/packages/services/tool_runtime/runtime.py)):
+- Execution pipeline ([runtime.py](../pydsh/packages/services/tool_runtime/runtime.py)):
   `pre-execute waterfall → monotonic guard → execute → post-execute waterfall`, produces `ToolResult` and broadcasts `tools/result`.
 - Arguments take **canonical values** (`execute` receives a dict), JSON deserialization is done by the loop (`_parse_arguments`).
 - Tool names follow the official ones (`bash`/`read_file`/`skill-catalog`/`task`).
@@ -143,7 +143,7 @@ Current model: `currentModel` > first entry in `availableModels`.
 **Seam**: `llm/definition.py` defines `LlmRuntime.stream` + `Chunk` (kernel/loop never imports openai types);
 `llm/providers/openai.py` is the only place that imports openai. Adding anthropic later = adding a new provider.
 
-**Five reasoning levels & soft-mapping** ([softmap.py](../minidsh/packages/services/llm/softmap.py)):
+**Five reasoning levels & soft-mapping** ([softmap.py](../pydsh/packages/services/llm/softmap.py)):
 - Unified enum `reasoningEffort`: `off / minimal / low / medium / high` (default `medium`),
   stored in `ModelSpec.reasoning_effort`, invalid levels throw `ValueError` at parse time (fail fast).
 - **The soft-mapping layer is a pure function, discriminating only by model id family (prefix)**, ignoring the vendor field (aligned with claw-code).
@@ -169,7 +169,7 @@ message's `reasoning_content` side-channel field; wire serialization decides ech
 
 ## 10. Session Event Contract
 
-- `SessionEventType` whitelist ([event.py](../minidsh/packages/services/session/event.py)):
+- `SessionEventType` whitelist ([event.py](../pydsh/packages/services/session/event.py)):
   `user-message / assistant-chunk / assistant-message / reasoning-chunk / tool-call /
   tool-result / model-change / skill-loaded / subagent-spawn / subagent-result /
   compaction / turn/start / turn/end / session/title / approval/asked / approval/decided / error`.
@@ -183,14 +183,14 @@ message's `reasoning_content` side-channel field; wire serialization decides ech
 - **pi-tui frontend**: TypeScript + `@earendil-works/pi-tui`, standalone Node.js process communicating via ACP JSON-RPC stdio protocol.
   Source in `infrastructure/tui/pi-tui/`; launcher plugin in `app_pi_tui.py` spawns the Node.js child process.
 - **Process isolation**: Python runs agent/session/tools; Node handles terminal rendering + input only — clear responsibilities, mutually non-blocking.
-- **Launch**: `minidsh --profile tui` spawns the pi-tui frontend subprocess and waits for it to exit.
-- No `run` subcommand: `minidsh [dir]` (dir defaults to cwd) launches the TUI directly.
+- **Launch**: `pydsh --profile tui` spawns the pi-tui frontend subprocess and waits for it to exit.
+- No `run` subcommand: `pydsh [dir]` (dir defaults to cwd) launches the TUI directly.
 
 ## 11. Naming Conventions (summary table)
 
 | Item | Convention | Example |
 |---|---|---|
-| Plugin name (entry-point key + module `name`) | `minidsh.<lowercase-hyphen>` | `minidsh.tool-bash` / `minidsh.persistence-sqlite` |
+| Plugin name (entry-point key + module `name`) | `pydsh.<lowercase-hyphen>` | `pydsh.tool-bash` / `pydsh.persistence-sqlite` |
 | Service name (`service_name`) | camelCase, aligned with official `ctx.<name>` | `systemPrompt` / `agent_loop` / `sessionPersistence` |
 | Event name | `domain/action` or kebab-case | `tools/change` / `assistant-message` |
 | Directory/module | lowercase_underscore | `tool_runtime` / `read_file.py` |
@@ -210,13 +210,13 @@ message's `reasoning_content` side-channel field; wire serialization decides ech
 - **Execution world assembly**: shell-local depends on subprocess; tests use `tests/helpers/world.py`'s `plug_execution_world(ctx)` to plug subprocess→shell→fs in one go, then plugin the tools.
 - **bwrap test skip gate**: sandbox uses `pytest.mark.skipif(shutil.which("bwrap") is None)`, skip without bwrap (don't fake full).
 - **TUI tests**: pi-tui frontend has no automated tests (requires a real TTY environment).
-- **Isolate `MINIDSH_HOME`**: `tests/conftest.py` autouse fixture points user config directory to tmp (prevents reading real apiKey).
+- **Isolate `PYDSH_HOME`**: `tests/conftest.py` autouse fixture points user config directory to tmp (prevents reading real apiKey).
 - Note: **must run with `python -m pytest`** (bare `pytest` lacks the `tests` package path, collect will fail with `No module named 'tests.helpers'`). After changing pyproject's entry-points, re-run `pip install -e . --no-build-isolation` to refresh the discovery cache.
 
 ## 14. Version / Release / Sensitive Information
 
-- Version number **single source of truth**: `minidsh/__init__.py`'s `__version__` (pyproject reads it via `attr`).
-- Packaging: setuptools, **only publishes the `minidsh/` library** (`packages.find where=["minidsh"]`); tests/examples/doc are not distributed with the library, but doc/ should be in git.
+- Version number **single source of truth**: `pydsh/__init__.py`'s `__version__` (pyproject reads it via `attr`).
+- Packaging: setuptools, **only publishes the `pydsh/` library** (`packages.find where=["pydsh"]`); tests/examples/doc are not distributed with the library, but doc/ should be in git.
 - **Sensitive information**: `apiKey` in plaintext only in `models.json` (`chmod 600` + gitignore); `.env`/`*.key` never committed.
 
 ---

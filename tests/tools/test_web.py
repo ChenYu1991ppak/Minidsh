@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
-from minidsh.packages.services.web import (
+from pydsh.cordis import Context
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime, ToolExecution
+from pydsh.packages.services.web import (
     WebRuntime,
     WebError,
     WebSearchRequest,
@@ -21,14 +21,14 @@ from minidsh.packages.services.web import (
     WebSearchProvider,
     WebFetchProvider,
 )
-from minidsh.packages.services.web.providers.fetch_http import (
+from pydsh.packages.services.web.providers.fetch_http import (
     HttpFetchProvider,
     validate_fetch_url,
     is_same_origin,
     classify_content_type,
     is_blocked_ip,
 )
-from minidsh.packages.services.web.providers import fetch_http as fetch_http_mod
+from pydsh.packages.services.web.providers import fetch_http as fetch_http_mod
 
 
 # ---------------------------------------------------------------------------
@@ -378,7 +378,7 @@ def _tool_ctx():
     ctx.provide("config", Config())
     ToolRuntime(ctx)
     WebRuntime(ctx)
-    from minidsh.packages.tools import web as tool_web
+    from pydsh.packages.tools import web as tool_web
     tool_web.apply(ctx)
     return ctx
 
@@ -431,7 +431,7 @@ async def test_tool_web_fetch_with_provider():
             super().__init__("fake")
 
         async def fetch(self, request):
-            from minidsh.packages.services.web import WebFetchResult, WebFetchBody
+            from pydsh.packages.services.web import WebFetchResult, WebFetchBody
             return WebFetchResult(url=request.url, statusCode=200,
                                   body=WebFetchBody(kind="text", content="body"))
 
@@ -472,19 +472,19 @@ async def test_tool_web_execute_via_runtime():
 
 
 def test_parse_search_args_rejects_too_many():
-    from minidsh.packages.tools.web import parse_search_args
+    from pydsh.packages.tools.web import parse_search_args
     with pytest.raises(ValueError):
         parse_search_args({"queries": ["a", "b", "c", "d", "e"]}, max_queries=4)
 
 
 def test_parse_search_args_rejects_non_string():
-    from minidsh.packages.tools.web import parse_search_args
+    from pydsh.packages.tools.web import parse_search_args
     with pytest.raises(ValueError):
         parse_search_args({"queries": ["ok", 123]})
 
 
 def test_merge_results_dedup_across_queries():
-    from minidsh.packages.tools.web import _merge_results
+    from pydsh.packages.tools.web import _merge_results
     r1 = WebSearchResult(sources=[WebSearchSource(url="https://a.com"),
                                   WebSearchSource(url="https://shared.com")])
     r2 = WebSearchResult(sources=[WebSearchSource(url="https://shared.com"),
@@ -497,7 +497,7 @@ def test_merge_results_dedup_across_queries():
 
 
 def test_merge_results_truncates_and_flags():
-    from minidsh.packages.tools.web import _merge_results
+    from pydsh.packages.tools.web import _merge_results
     r1 = WebSearchResult(sources=[WebSearchSource(url=f"https://x{i}.com") for i in range(5)])
     merged = _merge_results(["q1"], [r1], max_results=2)
     assert len(merged["sources"]) == 2
@@ -505,7 +505,7 @@ def test_merge_results_truncates_and_flags():
 
 
 def test_merge_results_collects_content():
-    from minidsh.packages.tools.web import _merge_results
+    from pydsh.packages.tools.web import _merge_results
     r1 = WebSearchResult(sources=[], content="answer one")
     merged = _merge_results(["q1"], [r1], max_results=5)
     assert "### q1" in merged["content"]
@@ -513,7 +513,7 @@ def test_merge_results_collects_content():
 
 
 def test_render_search_sources_markdown():
-    from minidsh.packages.tools.web import _render_search
+    from pydsh.packages.tools.web import _render_search
     value = {"available": True,
              "sources": [{"url": "https://a.com", "title": "A", "snippet": "snip",
                           "publishedAt": "2024"}],
@@ -525,7 +525,7 @@ def test_render_search_sources_markdown():
 
 
 def test_render_search_no_results_and_truncated():
-    from minidsh.packages.tools.web import _render_search
+    from pydsh.packages.tools.web import _render_search
     value = {"available": True, "sources": [], "content": None, "truncated": True}
     out = _render_search({}, value)
     assert "No results found." in out
@@ -533,7 +533,7 @@ def test_render_search_no_results_and_truncated():
 
 
 def test_render_fetch_with_truncation():
-    from minidsh.packages.tools.web import _render_fetch
+    from pydsh.packages.tools.web import _render_fetch
     value = {"available": True, "url": "https://a.com", "statusCode": 200,
              "body": {"kind": "text", "content": "hello"}, "truncated": True}
     out = _render_fetch({}, value)
@@ -543,7 +543,7 @@ def test_render_fetch_with_truncation():
 
 
 def test_render_fetch_unavailable():
-    from minidsh.packages.tools.web import _render_fetch
+    from pydsh.packages.tools.web import _render_fetch
     out = _render_fetch({}, {"available": False, "error": "nope"})
     assert "unavailable" in out
     assert "nope" in out
@@ -553,7 +553,7 @@ def test_render_fetch_unavailable():
 
 
 def test_html_to_text_strips_script_and_tags():
-    from minidsh.packages.tools.web import _html_to_text
+    from pydsh.packages.tools.web import _html_to_text
     html = "<html><head><script>alert(1)</script></head><body><p>Hello</p><script>evil()</script></body></html>"
     out = _html_to_text(html)
     assert "Hello" in out
@@ -563,21 +563,21 @@ def test_html_to_text_strips_script_and_tags():
 
 
 def test_html_to_text_plain_passthrough():
-    from minidsh.packages.tools.web import _html_to_text
+    from pydsh.packages.tools.web import _html_to_text
     # text/plain 不经此路径；但若传入纯文本，无标签可剥，内容保留
     out = _html_to_text("just plain text")
     assert out == "just plain text"
 
 
 def test_html_to_text_unescape_entities():
-    from minidsh.packages.tools.web import _html_to_text
+    from pydsh.packages.tools.web import _html_to_text
     out = _html_to_text("<p>&lt;div&gt; &amp; &quot;quotes&quot;</p>")
     assert "<div>" in out
     assert "&amp;" not in out
 
 
 def test_html_to_text_block_tags_become_newlines():
-    from minidsh.packages.tools.web import _html_to_text
+    from pydsh.packages.tools.web import _html_to_text
     html = "<h1>Title</h1><p>Para one</p><div>Block</div>"
     out = _html_to_text(html)
     assert "\n" in out
@@ -586,7 +586,7 @@ def test_html_to_text_block_tags_become_newlines():
 
 
 def test_render_fetch_respects_cap():
-    from minidsh.packages.tools.web import _render_fetch, WEB_FETCH_MAX_OUTPUT_CHARS, HTML_OMITTED_MARKER
+    from pydsh.packages.tools.web import _render_fetch, WEB_FETCH_MAX_OUTPUT_CHARS, HTML_OMITTED_MARKER
     # 构造超过 cap 的纯文本内容
     huge = "A" * (WEB_FETCH_MAX_OUTPUT_CHARS + 1000)
     value = {"available": True, "url": "https://a.com", "statusCode": 200,
@@ -597,7 +597,7 @@ def test_render_fetch_respects_cap():
 
 
 def test_render_fetch_has_notice():
-    from minidsh.packages.tools.web import _render_fetch, EXTERNAL_WEB_CONTENT_NOTICE
+    from pydsh.packages.tools.web import _render_fetch, EXTERNAL_WEB_CONTENT_NOTICE
     value = {"available": True, "url": "https://a.com", "statusCode": 200,
              "body": {"kind": "text", "content": "content"}, "truncated": False}
     out = _render_fetch({}, value)
@@ -605,7 +605,7 @@ def test_render_fetch_has_notice():
 
 
 def test_render_fetch_html_converted_to_text():
-    from minidsh.packages.tools.web import _render_fetch
+    from pydsh.packages.tools.web import _render_fetch
     value = {"available": True, "url": "https://a.com", "statusCode": 200,
              "body": {"kind": "html", "content": "<h1>Heading</h1><p>Text body</p>"}, "truncated": False}
     out = _render_fetch({}, value)
@@ -616,7 +616,7 @@ def test_render_fetch_html_converted_to_text():
 
 
 def test_render_fetch_no_double_truncated_footer():
-    from minidsh.packages.tools.web import _render_fetch
+    from pydsh.packages.tools.web import _render_fetch
     # 内容短，不触发 cap 截断；仅上游 truncated 标记
     value = {"available": True, "url": "https://a.com", "statusCode": 200,
              "body": {"kind": "text", "content": "short"}, "truncated": True}
@@ -626,7 +626,7 @@ def test_render_fetch_no_double_truncated_footer():
 
 def test_render_fetch_conversion_failure_marker(monkeypatch):
     """HTML 转换抛异常 → 降级为官方 omission marker，不带原始 markup。"""
-    import minidsh.packages.tools.web as web_mod
+    import pydsh.packages.tools.web as web_mod
 
     def _explode(html_str):
         raise RuntimeError("boom")
@@ -643,7 +643,7 @@ def test_render_fetch_conversion_failure_marker(monkeypatch):
 
 
 def test_fetch_meta_structure():
-    from minidsh.packages.tools.web import _fetch_meta
+    from pydsh.packages.tools.web import _fetch_meta
     value = {"available": True, "url": "https://a.com", "statusCode": 200,
              "body": {"kind": "text", "content": "x"}, "truncated": False}
     meta = _fetch_meta({}, value)
@@ -651,7 +651,7 @@ def test_fetch_meta_structure():
 
 
 def test_fetch_meta_truncated_flag():
-    from minidsh.packages.tools.web import _fetch_meta
+    from pydsh.packages.tools.web import _fetch_meta
     value = {"available": True, "url": "https://a.com", "statusCode": 200,
              "body": {"kind": "text", "content": "x"}, "truncated": True}
     meta = _fetch_meta({}, value)
@@ -659,12 +659,12 @@ def test_fetch_meta_truncated_flag():
 
 
 def test_fetch_meta_unavailable_returns_none():
-    from minidsh.packages.tools.web import _fetch_meta
+    from pydsh.packages.tools.web import _fetch_meta
     assert _fetch_meta({}, {"available": False}) is None
 
 
 def test_search_meta_structure():
-    from minidsh.packages.tools.web import _search_meta
+    from pydsh.packages.tools.web import _search_meta
     value = {"available": True,
              "sources": [{"url": "https://a.com"}, {"url": "https://b.com"}],
              "content": "answer", "truncated": False}
@@ -675,7 +675,7 @@ def test_search_meta_structure():
 
 
 def test_search_meta_unavailable_returns_none():
-    from minidsh.packages.tools.web import _search_meta
+    from pydsh.packages.tools.web import _search_meta
     assert _search_meta({}, {"available": False}) is None
 
 
@@ -688,7 +688,7 @@ async def test_tool_result_carries_meta_via_runtime():
             super().__init__("fake")
 
         async def fetch(self, request):
-            from minidsh.packages.services.web import WebFetchResult, WebFetchBody
+            from pydsh.packages.services.web import WebFetchResult, WebFetchBody
             return WebFetchResult(url=request.url, statusCode=200,
                                   body=WebFetchBody(kind="text", content="body"))
 
@@ -703,8 +703,8 @@ async def test_tool_result_carries_meta_via_runtime():
 
 async def test_tool_without_meta_has_none():
     """无 presentation_meta 的工具（如 bash）ToolResult.meta 为 None。"""
-    from minidsh.packages.services.tool_runtime import ToolRuntime as TR, ToolDefinition, ToolOutput, ToolExecution as TE
-    from minidsh.cordis import Context as Ctx
+    from pydsh.packages.services.tool_runtime import ToolRuntime as TR, ToolDefinition, ToolOutput, ToolExecution as TE
+    from pydsh.cordis import Context as Ctx
 
     ctx = Ctx()
     tools = TR(ctx)
@@ -762,7 +762,7 @@ async def test_tool_web_fetch_render_via_runtime():
             super().__init__("fake")
 
         async def fetch(self, request):
-            from minidsh.packages.services.web import WebFetchResult, WebFetchBody
+            from pydsh.packages.services.web import WebFetchResult, WebFetchBody
             return WebFetchResult(url=request.url, statusCode=200,
                                   body=WebFetchBody(kind="text", content="page body"))
 
@@ -843,7 +843,7 @@ def test_fetch_provider_available():
 
 def test_resolve_public_addresses_dns_failure(monkeypatch):
     import socket as _socket
-    from minidsh.packages.services.web.providers.fetch_http import resolve_public_addresses
+    from pydsh.packages.services.web.providers.fetch_http import resolve_public_addresses
 
     def _fail(host, port):
         raise _socket.gaierror("no such host")
@@ -861,7 +861,7 @@ def test_resolve_public_addresses_dns_failure(monkeypatch):
 
 def test_ddg_parse_html_extracts_results():
     """_parse_ddg_html 从 DuckDuckGo lite HTML 中提取结构化结果。"""
-    from minidsh.packages.services.web.providers.search_ddg import _parse_ddg_html
+    from pydsh.packages.services.web.providers.search_ddg import _parse_ddg_html
 
     html = """
     <html><body>
@@ -880,14 +880,14 @@ def test_ddg_parse_html_extracts_results():
 
 
 def test_ddg_parse_html_empty():
-    from minidsh.packages.services.web.providers.search_ddg import _parse_ddg_html
+    from pydsh.packages.services.web.providers.search_ddg import _parse_ddg_html
     assert _parse_ddg_html("") == []
     assert _parse_ddg_html("<html></html>") == []
 
 
 async def test_ddg_search_with_fake_client():
     """DdgSearchProvider 用假 HTTP 客户端返回搜索结果。"""
-    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+    from pydsh.packages.services.web.providers.search_ddg import DdgSearchProvider
 
     class _FakeClient:
         async def __aenter__(self):
@@ -910,7 +910,7 @@ async def test_ddg_search_with_fake_client():
 
 async def test_ddg_search_timeout():
     import httpx as _httpx
-    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+    from pydsh.packages.services.web.providers.search_ddg import DdgSearchProvider
 
     class _TimeoutClient:
         async def __aenter__(self):
@@ -930,7 +930,7 @@ async def test_ddg_search_timeout():
 
 async def test_ddg_search_http_error():
     import httpx as _httpx
-    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+    from pydsh.packages.services.web.providers.search_ddg import DdgSearchProvider
 
     class _ErrClient:
         async def __aenter__(self):
@@ -949,7 +949,7 @@ async def test_ddg_search_http_error():
 
 
 async def test_ddg_search_non_200():
-    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+    from pydsh.packages.services.web.providers.search_ddg import DdgSearchProvider
 
     class _FakeClient:
         async def __aenter__(self):
@@ -970,7 +970,7 @@ async def test_ddg_search_non_200():
 async def test_ddg_search_with_tool_web():
     """tool-web 的 web_search 经 DdgSearchProvider 正常返回结构化结果。"""
     ctx = _tool_ctx()
-    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+    from pydsh.packages.services.web.providers.search_ddg import DdgSearchProvider
 
     class _FakeClient:
         async def __aenter__(self):
@@ -995,7 +995,7 @@ async def test_ddg_search_with_tool_web():
 async def test_ddg_search_renders_via_runtime():
     """经 ToolRuntime.execute 全链路：web_search + DdgSearchProvider 渲染正常。"""
     ctx = _tool_ctx()
-    from minidsh.packages.services.web.providers.search_ddg import DdgSearchProvider
+    from pydsh.packages.services.web.providers.search_ddg import DdgSearchProvider
 
     class _FakeClient:
         async def __aenter__(self):

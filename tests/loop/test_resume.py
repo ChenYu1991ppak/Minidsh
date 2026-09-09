@@ -1,16 +1,16 @@
 """resume 验收测试：从事件流恢复会话（官方 AgentRegistry.resume + derive_messages）。"""
 from __future__ import annotations
 
-from minidsh.cordis import Context
-from minidsh.packages.services.loop import AgentLoop, derive_messages
-from minidsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
-from minidsh.packages.services.session import SessionStore, SessionEvent
-from minidsh.infrastructure.config import Config
-from minidsh.packages.services.tool_runtime import ToolRuntime
-from minidsh.packages.services.llm.providers.openai import OpenAILlm
+from pydsh.cordis import Context
+from pydsh.packages.services.loop import AgentLoop, derive_messages
+from pydsh.packages.services.prompt.providers.prompt import LocalSystemPromptService
+from pydsh.packages.services.session import SessionStore, SessionEvent
+from pydsh.infrastructure.config import Config
+from pydsh.packages.services.tool_runtime import ToolRuntime
+from pydsh.packages.services.llm.providers.openai import OpenAILlm
 from tests.helpers.openai_fake import make_scripted_client
 from tests.helpers.world import plug_execution_world
-from minidsh.packages.tools import bash as tool_bash
+from pydsh.packages.tools import bash as tool_bash
 
 
 def _assemble(script):

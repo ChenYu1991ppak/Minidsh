@@ -7,13 +7,13 @@ import shutil
 
 import pytest
 
-from minidsh.cordis import Context
-from minidsh.packages.services.sandbox.definition import (
+from pydsh.cordis import Context
+from pydsh.packages.services.sandbox.definition import (
     SandboxExecutionPolicy,
     SandboxService,
 )
-from minidsh.packages.services.sandbox.providers.bwrap import BwrapSandboxService
-from minidsh.packages.services.subprocess.providers.local import LocalSubprocessService
+from pydsh.packages.services.sandbox.providers.bwrap import BwrapSandboxService
+from pydsh.packages.services.subprocess.providers.local import LocalSubprocessService
 
 pytestmark = pytest.mark.skipif(shutil.which("bwrap") is None, reason="bwrap 不可用")
 

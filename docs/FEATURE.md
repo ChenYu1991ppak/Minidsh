@@ -28,7 +28,7 @@ English | [中文](FEATURE_zh.md)
 
 ## TUI interaction (replaces CLI `run`)
 
-- `minidsh` (no subcommand) launches the Textual TUI directly, default cwd = project root; `replay` / `plugin` remain subcommands.
+- `pydsh` (no subcommand) launches the Textual TUI directly, default cwd = project root; `replay` / `plugin` remain subcommands.
 - **View-model decoupling**: `transcript.fold` (events → turn tree, a pure function that doesn't touch Textual) + Textual App.
 - **Reasoning/reply color-coded streaming display** (rich.Text, reasoning dim italic).
 - **Slash commands**: `/model`, `/thinking`, `/new` (switch to a new session in-process), `/exit`.
