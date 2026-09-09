@@ -168,6 +168,10 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
             self._start_prompt(params, message_id)
         elif method == "session/cancel":
             self._cancel(params, message_id)
+        elif method == "session/list":
+            write_response(message_id, self._list_sessions())
+        elif method == "session/resume":
+            write_response(message_id, self._resume_session(params))
         else:
             write_error(message_id, JsonRpcError(METHOD_NOT_FOUND, f"unknown method {method}"))
 
@@ -175,12 +179,26 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
 
     def _initialize(self, params: dict) -> dict:
         """返回 ACP v1 协议版本 + capabilities。"""
+        cfg = self.ctx.config
+        models = []
+        for model_id in cfg.available_models:
+            spec = cfg.find(model_id)
+            if spec:
+                models.append({
+                    "id": spec.id,
+                    "description": spec.name or spec.id,
+                    "reasoningEffort": getattr(spec, "reasoning_effort", "medium") or "medium",
+                })
+        current = cfg.current
         return {
             "protocolVersion": 1,
             "capabilities": {
                 "promptCapabilities": {"text": True},
                 "modelSelection": True,
                 "reasoningEffort": True,
+                "models": models,
+                "model": current.id if current else "?",
+                "reasoningEffort": getattr(current, "reasoning_effort", "medium") if current else "medium",
             },
         }
 
@@ -279,3 +297,42 @@ class AcpServerProvider(AcpServer, CapabilityProvider):
         if task is not None and not task.done():
             task.cancel()
         write_response(message_id, {})
+
+    def _list_sessions(self) -> list[dict]:
+        """列出所有已持久化的会话（session id + 时间戳）。"""
+        backend = getattr(self.ctx, "_persistence_backend", None)
+        if backend is None:
+            return []
+        session_ids = backend.list()
+        result = []
+        for sid in session_ids:
+            entry = {"id": sid}
+            # 尝试读 mtime
+            path = backend.log_path(sid) if hasattr(backend, "log_path") else None
+            if path and path.exists():
+                import datetime
+                ts = path.stat().st_mtime
+                entry["updatedAt"] = datetime.datetime.fromtimestamp(ts).isoformat()
+            result.append(entry)
+        return result
+
+    def _resume_session(self, params: dict) -> dict:
+        """恢复一个持久会话。"""
+        session_id = params.get("sessionId")
+        if not session_id:
+            raise JsonRpcError(INVALID_PARAMS, "sessionId is required")
+        backend = getattr(self.ctx, "_persistence_backend", None)
+        if backend is None:
+            raise JsonRpcError(INVALID_PARAMS, "no persistence backend")
+        events = backend.load_stored(session_id)
+        if events is None:
+            raise JsonRpcError(INVALID_PARAMS, f"session {session_id!r} not found")
+        loop = self.ctx.agent_loop
+        agent = loop.resume(session_id, events=events)
+        self._sessions[agent.session.id] = agent
+        cfg = self.ctx.config
+        return {
+            "sessionId": agent.session.id,
+            "model": cfg.current.id if cfg.current else "?",
+            "effort": getattr(cfg.current, "reasoning_effort", "medium") if cfg.current else "medium",
+        }

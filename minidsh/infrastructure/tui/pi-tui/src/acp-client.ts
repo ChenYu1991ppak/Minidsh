@@ -157,6 +157,16 @@ export class AcpClient extends EventEmitter {
     return this._request("session/set_config_option", { sessionId, key, value });
   }
 
+  /** M5: List all persisted sessions. */
+  async sessionList(): Promise<Array<{ id: string; title?: string; updatedAt?: string }>> {
+    return this._request("session/list") as Promise<Array<{ id: string; title?: string; updatedAt?: string }>>;
+  }
+
+  /** M5: Resume a persisted session. */
+  async sessionResume(sessionId: string): Promise<{ sessionId: string; model?: string; effort?: string } | null> {
+    return this._request("session/resume", { sessionId }) as Promise<{ sessionId: string; model?: string; effort?: string } | null>;
+  }
+
   sessionCancel(sessionId: string): void {
     this._notify("session/cancel", { sessionId });
   }

@@ -24,18 +24,31 @@ export type TranscriptItem =
       visibility: ToolVisibility;
     };
 
+/** M4: Pending question from ask_user_question tool. */
+export interface QuestionData {
+  question: string;
+  header: string;
+  options: Array<{ label: string; description: string }>;
+  multiSelect: boolean;
+  selectedIndex: number;
+  selectedIndices: number[];
+}
+
 export class SessionState {
   sessionId: string | null = null;
   model = "?";
   effort = "?";
   /** Single ordered timeline: thoughts, messages, and tool cards interleaved by arrival. */
   items: TranscriptItem[] = [];
-  /** 实际 token 用量（provider 回传，非估算）：已用 + 上下文窗口。 */
+  /** Actual token usage (from provider), not estimated. */
   usage: { used?: number; size?: number } | null = null;
+  /** M4: Pending user question (null when no question is active). */
+  pendingQuestion: QuestionData | null = null;
 
   reset(sessionId: string): void {
     this.sessionId = sessionId;
     this.items = [];
+    this.pendingQuestion = null;
   }
 
   /** Append to the tail item when it is an assistant thought; else push a new one. */
@@ -84,5 +97,22 @@ export class SessionState {
     item.visibility = item.visibility === "hidden" ? "collapsed"
       : item.visibility === "collapsed" ? "expanded"
         : "hidden";
+  }
+
+  /** M4: Set a pending question from ask_user_question tool. */
+  setQuestion(data: { question: string; header: string; options: Array<{ label: string; description: string }>; multiSelect?: boolean }): void {
+    this.pendingQuestion = {
+      question: data.question,
+      header: data.header,
+      options: data.options,
+      multiSelect: data.multiSelect ?? false,
+      selectedIndex: 0,
+      selectedIndices: [],
+    };
+  }
+
+  /** M4: Clear the pending question. */
+  clearQuestion(): void {
+    this.pendingQuestion = null;
   }
 }
