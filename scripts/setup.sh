@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mini-dsh 一键安装脚本
+# pydsh 一键安装脚本
 # 安装 Python + Node.js 依赖，编译 pi-tui 前端
 set -euo pipefail
 

@@ -1,14 +1,14 @@
-# mini-dsh vs 官方 dsh-tui 差异对比
+# pydsh vs 官方 dsh-tui 差异对比
 
 > 对比基准：官方 `@deepseek-ai/dsh-tui`（commit `10bb9cbf4a^`，2026-09-04 已删除）
-> mini-dsh 版本：`infrastructure/tui/pi-tui/src/`（3 文件，~570 行）
+> pydsh 版本：`infrastructure/tui/pi-tui/src/`（3 文件，~570 行）
 > 官方版本：`packages/ui/tui/src/`（20+ 文件，~5000+ 行）
 
 ---
 
 ## 总览
 
-| 维度 | 官方 dsh-tui | mini-dsh pi-tui | 差距 |
+| 维度 | 官方 dsh-tui | pydsh pi-tui | 差距 |
 |---|---|---|---|
 | 源文件数 | 20+ | 3 | 巨大 |
 | 代码量 | ~5000+ 行 | ~570 行 | ~10x |
@@ -21,7 +21,7 @@
 
 ### 1. Markdown 渲染
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 完整 Markdown 渲染：标题、代码块、粗体、斜体、链接、引用、列表 | 纯文本，无任何 Markdown 格式化 |
 | 代码块有语法高亮（通过 pi-tui Markdown 组件） | 代码以纯文本显示 |
@@ -31,7 +31,7 @@
 
 ### 2. 斜杠命令系统
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | `/help` — 显示快捷键和命令 | 无 |
 | `/model [provider/]model` — 模型选择 | 无 |
@@ -46,7 +46,7 @@
 
 ### 3. 模型选择对话框
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 居中覆盖层，`╭ Select model ───╮` 边框 | 无 |
 | 输入过滤（按 provider/model ID/描述） | 无 |
@@ -58,7 +58,7 @@
 
 ### 4. 用户提问对话框（ask_user_question）
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 内联模态框，渲染在编辑器上方 | 无（`user-question` 事件已产生但无渲染） |
 | 单选/多选/自定义答案三种模式 | 无 |
@@ -74,9 +74,9 @@
 
 ### 5. 状态栏信息
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
-| 可配置模板：`${cwd}${git/worktree}${model}${token_meter/cache_hit_rate}${context}` | `mini-dsh  ?(?)  session-0001` |
+| 可配置模板：`${cwd}${git/worktree}${model}${token_meter/cache_hit_rate}${context}` | `pydsh  ?(?)  session-0001` |
 | 显示当前工作目录（粗体 accent） | 无 |
 | 显示 git 分支名（dim） | 无 |
 | 显示 token 用量（↑输入 ↓输出） | 仅百分比 |
@@ -88,7 +88,7 @@
 
 ### 6. 步骤计时
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 每步显示计时：`Model wait 1.0s · Thinking 2.0s · Response 0.5s` | 无 |
 | 四个阶段 TTFT/思考/响应/工具，各有独立 glyph | 无 |
@@ -99,7 +99,7 @@
 
 ### 7. 工具卡片类型
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | **Terminal 卡片**：`$ cmd` → `cwd` → 输出 → `[exit N]` | 通用卡片，纯文本 |
 | **Diff 卡片**：`+ 新增行`(绿) `- 删除行`(红) 文件头 | 无 |
@@ -110,7 +110,7 @@
 
 ### 8. Todo/Plan 面板
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 编辑器上方渲染 `Plan` 标题 + 条目列表 | 无 |
 | `✓`(绿) 已完成、`●`(黄) 进行中、`○`(dim) 待处理 | 无 |
@@ -120,7 +120,7 @@
 
 ### 9. 文件路径自动补全
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | `@` 开头触发模糊文件搜索 | 无 |
 | 目录作用域：`@path/` 列出子项 | 无 |
@@ -132,7 +132,7 @@
 
 ### 10. 输入历史
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | ↑/↓ 浏览历史命令 | 无 |
 | 支持多行编辑（Shift+Enter/Alt+Enter） | 无 |
@@ -141,7 +141,7 @@
 
 ### 11. 状态 glyph 动画
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 提示符 `dsh >` 的 `>` 替换为阶段 glyph | `> ` 静态提示符 |
 | 等待首 token: `◍`，推理: `✻`，生成: `●`，工具: `⚙`，压缩: `⊙` | 无 |
@@ -156,7 +156,7 @@
 
 ### 12. 颜色/主题系统
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 9 种颜色角色 + 6 种属性角色 | 6 个 ANSI 函数 |
 | 暗色/亮色双方案（`prefers-color-scheme`） | 仅暗色 |
@@ -166,7 +166,7 @@
 
 ### 13. Banner 动画
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | "DEEPSEEK HARNESS" 品牌 banner | 无 banner |
 | 24 帧从左到右揭示动画（~15ms/帧） | 无 |
@@ -175,7 +175,7 @@
 
 ### 14. 会话恢复对话框
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 全屏覆盖层，搜索框 `⌕` | 仅自动恢复（`session/latest`） |
 | 两个范围：当前工作区 / 所有工作区 | 无 |
@@ -185,14 +185,14 @@
 
 ### 15. 压缩指示器
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | `Context being compacted 1.2s` 状态行 | 无 |
 | 独立计时器 | 无 |
 
 ### 16. 上下文卡片
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 插件/目标注入的上下文以卡片渲染 | 无 |
 | `Context · <label>` (dim) 标题 | 无 |
@@ -200,7 +200,7 @@
 
 ### 17. 推理切换
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | Ctrl+R 显示/隐藏推理块 | 无 |
 | 推理块以 dim italic 渲染 | dim 但无 italic |
@@ -212,38 +212,38 @@
 
 ### 18. 终端标题栏
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 终端标题栏更新为会话标题 | 无 |
 
 ### 19. 折叠续文
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | 多个 assistant 步骤折叠为一个消息 | 每个步骤独立显示 |
 | 后续步骤无 `Assistant` 标题 | 每个都有标题 |
 
 ### 20. Ctrl+L 强制重绘
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | Ctrl+L 强制全终端重绘 | 无 |
 
 ### 21. 会话引用
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | `@session-id` 引用其他会话 | 无 |
 
 ### 22. 退出行为
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | `/exit` 等待当前 turn 完成后退出 | `/exit` 立即退出 |
 
 ### 23. 多行输入
 
-| 官方 | mini-dsh |
+| 官方 | pydsh |
 |---|---|
 | Shift+Enter/Alt+Enter 插入换行 | 无 |
 

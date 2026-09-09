@@ -51,7 +51,7 @@ __all__ = [
 LOCAL_FETCH_PROVIDER_ID = "http"
 
 # 显式产品 User-Agent，非浏览器伪装
-DEFAULT_USER_AGENT = "mini-dsh/0.1 (+https://github.com/mini-dsh)"
+DEFAULT_USER_AGENT = "pydsh/0.1 (+https://github.com/pydsh)"
 
 WEB_FETCH_MAX_URL_LENGTH = 2048
 

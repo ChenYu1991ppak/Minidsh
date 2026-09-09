@@ -1,4 +1,4 @@
-# mini-dsh Feature Gap Analysis
+# pydsh Feature Gap Analysis
 
 > 对比基准：官方 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) v0.1.3-alpha.2
 > 参考文档：`deepseek-harness-anatomy/` 17 章解剖教程 + `learn-deepseek-harness/` 上游分析报告
@@ -8,7 +8,7 @@
 
 ## 总览
 
-mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agent-loop、session 持久化、工具执行管线、LLM 适配、compaction、subagent、skill、web/lsp、approval、ACP/TUI 前端），但以下特性尚未实现。按重要性分为 P0（阻断级）、P1（高优先级）、P2（中优先级）、P3（低优先级/实验性）四级。
+pydsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agent-loop、session 持久化、工具执行管线、LLM 适配、compaction、subagent、skill、web/lsp、approval、ACP/TUI 前端），但以下特性尚未实现。按重要性分为 P0（阻断级）、P1（高优先级）、P2（中优先级）、P3（低优先级/实验性）四级。
 
 ---
 
@@ -16,7 +16,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 1. 文件写入/编辑工具链（Write / Edit / Glob / Grep）
 
-**现状**：mini-dsh 只有 `read_file`，没有 `Write`、`Edit`、`Glob`、`Grep`。
+**现状**：pydsh 只有 `read_file`，没有 `Write`、`Edit`、`Glob`、`Grep`。
 
 **影响**：模型无法写入或修改文件，无法搜索代码库。这是 agent 最基本的能力——没有写入能力，agent 只能读不能说"做"。
 
@@ -59,7 +59,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 4. Subagent 控制工具（ListAgents / TaskStop）
 
-**现状**：mini-dsh 有 `task` 工具（spawn/fork），但没有 `ListAgents` 和 `TaskStop`。
+**现状**：pydsh 有 `task` 工具（spawn/fork），但没有 `ListAgents` 和 `TaskStop`。
 
 **影响**：模型无法查看当前运行的 subagent 列表，也无法取消正在运行的 subagent。
 
@@ -96,7 +96,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 7. Permission Presets（权限预设）
 
-**现状**：mini-dsh 有 approval 服务（ask/never 策略），但没有预设系统。
+**现状**：pydsh 有 approval 服务（ask/never 策略），但没有预设系统。
 
 **影响**：用户无法预先配置"always allow bash"或"always deny web_fetch"等规则，每次都要手动批准。
 
@@ -122,7 +122,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 9. Session 格式版本化 + 迁移
 
-**现状**：mini-dsh 的 session 事件格式没有版本化机制。
+**现状**：pydsh 的 session 事件格式没有版本化机制。
 
 **影响**：未来如果事件格式变更，旧 session 无法回放。
 
@@ -142,7 +142,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 11. Preset（agent 预设）系统
 
-**现状**：mini-dsh 有 bundle/profile 组合，但没有 per-session 的 agent-preset。
+**现状**：pydsh 有 bundle/profile 组合，但没有 per-session 的 agent-preset。
 
 **影响**：无法为不同 session 使用不同的 agent 配置（不同工具集、不同模型）。
 
@@ -154,7 +154,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 12. PTC（Program-to-Call）模式
 
-**现状**：缺失。mini-dsh 只有 native 工具呈现模式。
+**现状**：缺失。pydsh 只有 native 工具呈现模式。
 
 **影响**：无法支持 SDK 编程模式（模型通过 `run_code` 工具执行 Python/TypeScript 代码来调用工具）。
 
@@ -208,7 +208,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 17. 多 Subagent Provider（ACP / Claude Code / Codex）
 
-**现状**：mini-dsh 只有 in-process spawn/fork 两种 provider。
+**现状**：pydsh 只有 in-process spawn/fork 两种 provider。
 
 **影响**：无法跨进程/跨机器委派 subagent。
 
@@ -222,7 +222,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 18. 多 Provider LLM 架构
 
-**现状**：mini-dsh 的 LLM 适配层已预留 seam（`LlmRuntime`），但只有 OpenAI 兼容 provider。
+**现状**：pydsh 的 LLM 适配层已预留 seam（`LlmRuntime`），但只有 OpenAI 兼容 provider。
 
 **影响**：无法直接接入 Anthropic、Google 等非 OpenAI 兼容 API。
 
@@ -326,7 +326,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ### 28. Windows 支持（PowerShell / ACL Sandbox）
 
-**现状**：缺失。mini-dsh 目前仅 Linux/macOS。
+**现状**：缺失。pydsh 目前仅 Linux/macOS。
 
 **官方对应**：
 - `packages/shell/tool-pwsh` / `tool-pwsh-persistent`
@@ -342,13 +342,13 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 **官方对应**：`packages/sdk/` — JSON-RPC protocol + TypeScript client/server
 
-**评估**：mini-dsh 通过 ACP 协议间接支持外部客户端，不需要独立 SDK。
+**评估**：pydsh 通过 ACP 协议间接支持外部客户端，不需要独立 SDK。
 
 ---
 
 ### 30. Landlock 沙箱
 
-**现状**：mini-dsh 用 bwrap 做沙箱。
+**现状**：pydsh 用 bwrap 做沙箱。
 
 **官方对应**：`native/landlock-run` — Linux Landlock 原生 addon
 
@@ -358,7 +358,7 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 ## 与 Anatomy 章节的对应关系
 
-| Anatomy 章节 | mini-dsh 实现状态 |
+| Anatomy 章节 | pydsh 实现状态 |
 |---|---|
 | ch01 Cordis 内核 | ✅ 完整（4-state fiber，教学简化） |
 | ch02 Agent Loop | ✅ 完整 |
@@ -384,12 +384,12 @@ mini-dsh 已实现 deepseek-harness 的核心架构骨架（Cordis 内核、agen
 
 来自 `learn-deepseek-harness/upstream-analysis/`：
 
-| 候选 | 主题 | mini-dsh 状态 |
+| 候选 | 主题 | pydsh 状态 |
 |---|---|---|
 | #1 | Webhook runtime | ❌ 缺失 |
 | #2 | Agent Teams | ❌ 缺失 |
 | #3 | Web Client 架构 | ❌ 缺失 |
-| ch07 合并 | DeepSeek API wire 扩展 | N/A（mini-dsh 用 OpenAI 兼容 API） |
+| ch07 合并 | DeepSeek API wire 扩展 | N/A（pydsh 用 OpenAI 兼容 API） |
 
 ---
 

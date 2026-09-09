@@ -1,4 +1,4 @@
-# mini-dsh Makefile
+# pydsh Makefile
 # 任务编排：make install → make tui / make test / make clean
 
 SHELL := /bin/bash
@@ -10,7 +10,7 @@ SETUP := bash scripts/setup.sh
 
 # 默认目标
 help:
-	@echo "mini-dsh 自动化任务"
+	@echo "pydsh 自动化任务"
 	@echo ""
 	@echo "  make install    安装 Python + Node.js 依赖 & 编译 pi-tui 前端"
 	@echo "  make tui        启动 pi-tui TUI 前端（需先配置 models.json）"

@@ -1,4 +1,4 @@
-# mini-dsh Tool Gap Analysis
+# pydsh Tool Gap Analysis
 
 > 对比基准：官方 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) v0.1.3-alpha.2
 > 生成日期：2026-09-08
@@ -7,11 +7,11 @@
 
 ## 总览
 
-官方 deepseek-harness 共有 **23 个工具包**（含 PTC 内置工具），定义了约 30+ 个模型可调用的工具。mini-dsh 目前实现了 **7 个工具**（bash、read_file、web_search、web_fetch、lsp、skill-catalog、task），缺失约 23+ 个工具。
+官方 deepseek-harness 共有 **23 个工具包**（含 PTC 内置工具），定义了约 30+ 个模型可调用的工具。pydsh 目前实现了 **7 个工具**（bash、read_file、web_search、web_fetch、lsp、skill-catalog、task），缺失约 23+ 个工具。
 
 ---
 
-## mini-dsh 已实现的工具
+## pydsh 已实现的工具
 
 | # | 工具名 | 对应官方 | 状态 |
 |---|---|---|---|
@@ -243,7 +243,7 @@
 
 ## 工具总数对比
 
-| 类别 | 官方 | mini-dsh | 缺失 |
+| 类别 | 官方 | pydsh | 缺失 |
 |---|---|---|---|
 | 文件系统 | Read, Write, Edit, Glob, Grep, ReadImage | read_file | Write, Edit, Glob, Grep, ReadImage |
 | Shell | Bash, Bash (persistent), PowerShell | bash | 持久化 bash, PowerShell |

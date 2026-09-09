@@ -1,8 +1,8 @@
-# mini-dsh 构建原则与约定
+# pydsh 构建原则与约定
 
 [English](PRINCIPLES.md) | 中文
 
-> 这是 mini-dsh 的**规则手册**：后续迭代改动时，先查这里，再动代码。
+> 这是 pydsh 的**规则手册**：后续迭代改动时，先查这里，再动代码。
 > 每条原则都源自已落地的实现，不是未实现的理想。与官方对不上的地方，
 > 代码注释与本文都会标 `[教学简化]` 或 `[偏离]`。
 
@@ -10,7 +10,7 @@
 
 ## 1. 一句话定位
 
-**mini-dsh 是用 Python 忠实复刻 DeepSeek Harness（dsh）的工程骨架**：
+**pydsh 是用 Python 忠实复刻 DeepSeek Harness（dsh）的工程骨架**：
 以 Cordis「一切皆插件」容器为内核，串起 agent-loop / tools / skills / subagent /
 session 事件流 / LLM 适配 / compaction，做到可运行、可观测、可追溯。
 

@@ -1,4 +1,4 @@
-"""mini-dsh —— 最小化 DeepSeek Harness。
+"""pydsh —— 最小化 DeepSeek Harness。
 
 忠实复刻 DeepSeek Harness（dsh）的工程骨架：以 Cordis「一切皆插件」容器为内核，
 串起 agent-loop / tools / skills / subagent / session 事件流 / LLM 适配 / compaction，

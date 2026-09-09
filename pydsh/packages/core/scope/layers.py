@@ -7,7 +7,7 @@ ScopedLayers 拥有一个注册表的「全局层 + 各 scope 精确层」：
 - 注册的可见性与 effect 归属都由调用方传入的 Context 决定（``ctx.effect`` 绑定 fiber）；
 - 只有**完全空**的聚合层才被回收，不丢兄弟表。
 
-[教学简化] mini-dsh 的 Cordis ``ctx.effect`` 是同步的（不产 generator），故
+[教学简化] pydsh 的 Cordis ``ctx.effect`` 是同步的（不产 generator），故
 ``ScopedLayers.effect`` 直接同步执行 action 并包撤回，无 yield/notify。
 """
 from __future__ import annotations

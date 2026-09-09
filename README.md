@@ -1,4 +1,4 @@
-# mini-dsh
+# pydsh
 
 English | [中文](README_zh.md)
 
@@ -17,9 +17,9 @@ English | [中文](README_zh.md)
 
 ## Project Description
 
-mini-dsh is a Python educational reproduction of the official [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) (dsh). The official dsh is a TypeScript general-purpose AI agent framework: powered by the Cordis plugin container, it implements every agent capability — sessions, model calls, tool execution, skills, subagents, context compaction, token metering, approval, web retrieval — as **pluggable plugins**, assembled declaratively through bundles and profiles.
+pydsh is a Python educational reproduction of the official [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) (dsh). The official dsh is a TypeScript general-purpose AI agent framework: powered by the Cordis plugin container, it implements every agent capability — sessions, model calls, tool execution, skills, subagents, context compaction, token metering, approval, web retrieval — as **pluggable plugins**, assembled declaratively through bundles and profiles.
 
-mini-dsh faithfully reproduces this architecture:
+pydsh faithfully reproduces this architecture:
 
 - **Kernel**: a custom `cordis/` plugin container (Context / Fiber / Service / event dispatch / four-form normalization), ~400 lines of synchronous single-threaded kernel, equivalent to the official `@deepseek-ai/cordis`
 - **Capability tri-role**: every capability is split into three layers — definition (pure contract) / provider (self-registering on construction) / consumer (writes to the tool registry) — making seams replaceable
@@ -29,7 +29,7 @@ mini-dsh faithfully reproduces this architecture:
 - **pi-tui terminal frontend**: TypeScript + `@earendil-works/pi-tui`, standalone Node.js process communicating via ACP JSON-RPC stdio protocol, aligned with the official dsh-tui
 - **Real token usage**: provider-returned usage (not estimates) flows through the `tokenMeter` anchor to the frontend display
 
-Compared to the official version (TypeScript + 40+ packages), mini-dsh is **minimally cut**: a single-repo single-package layout, synchronous kernel, and an educational event surface, while preserving all core mechanism shapes. Every deviation is marked `[教学简化]` (teaching simplification), and every alignment is marked `↔ official source location`.
+Compared to the official version (TypeScript + 40+ packages), pydsh is **minimally cut**: a single-repo single-package layout, synchronous kernel, and an educational event surface, while preserving all core mechanism shapes. Every deviation is marked `[教学简化]` (teaching simplification), and every alignment is marked `↔ official source location`.
 
 ## Current Features
 
@@ -48,7 +48,7 @@ Full list: [docs/FEATURE.md](docs/FEATURE.md).
 ## Project Structure
 
 ```
-mini-dsh/
+pydsh/
 ├── Makefile                          # Task automation
 ├── scripts/
 │   └── setup.sh                      # One-click install script

@@ -30,7 +30,7 @@ DDG_SEARCH_PROVIDER_ID = "ddg"
 _DDG_LITE_URL = "https://lite.duckduckgo.com/lite/"
 
 # User-Agent
-_DDG_USER_AGENT = "mini-dsh/0.1 (+https://github.com/mini-dsh)"
+_DDG_USER_AGENT = "pydsh/0.1 (+https://github.com/pydsh)"
 
 # 结果上限
 _MAX_RESULTS = 20

@@ -7,7 +7,7 @@
 - 注册视图**沿链向下继承**：子 scope 看得见祖先层（``ScopedLayers``）；
 - 事件准入**沿链向上扩展**：挂在祖先上的监听器收到后代 key 派发的事件。
 
-mini-dsh 落地子集（相对官方，见 [教学简化]）：
+pydsh 落地子集（相对官方，见 [教学简化]）：
 - ``createScope`` = ``ctx.extend`` 一个带 scope 标签的子容器（读继承、写孤立），
   ``Scope.dispose()`` 停稳撤销其拥有的一切注册；
 - 不落地 scope parent 链 / rebind / scopeTarget（M9 之前用不到），只保留
@@ -57,7 +57,7 @@ class Scope:
 def createScope(ctx: Context, key: object = None) -> Scope:
     """在 ``ctx`` 下铸造一个作用域（官方 createScope）。
 
-    [教学简化] 官方经 backing fiber 把 scope 生命周期绑到铸造它的插件；mini-dsh
+    [教学简化] 官方经 backing fiber 把 scope 生命周期绑到铸造它的插件；pydsh
     直接 ``extend`` 一个子容器，``Scope.dispose()`` 撤销子容器拥有的全部注册。
     """
     key = key if key is not None else object()

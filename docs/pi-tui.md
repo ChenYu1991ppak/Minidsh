@@ -4,11 +4,11 @@ English | [中文](pi-tui_zh.md)
 
 ## Why pi-tui
 
-mini-dsh uses pi-tui as its TUI frontend:
+pydsh uses pi-tui as its TUI frontend:
 
 | Frontend | Tech stack | Form | Use case |
 |---|---|---|---|
-| mini-dsh TUI | TypeScript + `@earendil-works/pi-tui` | Standalone Node.js process, ACP protocol | Aligned with the official dsh-tui ecosystem, software-development terminal |
+| pydsh TUI | TypeScript + `@earendil-works/pi-tui` | Standalone Node.js process, ACP protocol | Aligned with the official dsh-tui ecosystem, software-development terminal |
 
 ## Decision Rationale
 
@@ -38,7 +38,7 @@ mini-dsh uses pi-tui as its TUI frontend:
 ├─────────────────────────────────────────────────────┤
 │ ACP JSON-RPC stdio (ndjson, one JSON object per line)│
 ├─────────────────────────────────────────────────────┤
-│ mini-dsh Python backend                             │
+│ pydsh Python backend                             │
 │  ├─ acp-server  ── receives JSON-RPC, drives agent loop │
 │  ├─ agent-loop  ── ReactLoopAgent                   │
 │  └─ session/llm/tools ── core capabilities          │
@@ -72,7 +72,7 @@ is covered by 18 tests (`tests/tools/test_acp.py`).
 
 ## Rendering Comparison vs. Official dsh-tui
 
-| Dimension | Official dsh-tui (removed) | mini-dsh pi-tui frontend |
+| Dimension | Official dsh-tui (removed) | pydsh pi-tui frontend |
 |---|---|---|
 | Transcript model | Single ordered timeline (append-origin) | ✅ Same single ordered `items`, tool cards render inline between messages |
 | Tool card | `ToolCardComponent` three-stage fold (hidden/collapsed/expanded) | ✅ Same three-stage fold (Ctrl+O cycle) |

@@ -1,5 +1,5 @@
 /**
- * mini-dsh pi-tui frontend: interactive terminal UI via ACP protocol.
+ * pydsh pi-tui frontend: interactive terminal UI via ACP protocol.
  *
  * M1: Markdown rendering for assistant messages
  * M2: Slash command system (/model, /help, /exit, /resume, /status)
@@ -95,7 +95,7 @@ function statusBar(width: number): string[] {
     ? ` ${Math.round(usage.used / usage.size * 100)}% (${usage.used}/${usage.size})`
     : "";
   const label = state.sessionTitle || state.sessionId || "connecting...";
-  const line = ` mini-dsh  ${state.model}(${state.effort})${pct}  ${label}`;
+  const line = ` pydsh  ${state.model}(${state.effort})${pct}  ${label}`;
   return [truncateToWidth(line, width)];
 }
 
@@ -154,7 +154,7 @@ function transcript(width: number): string[] {
     lines.push("");
   }
   if (lines.length === 0) {
-    lines.push(truncateToWidth("Welcome to mini-dsh. Type a message to start.", width));
+    lines.push(truncateToWidth("Welcome to pydsh. Type a message to start.", width));
   }
   return lines;
 }
@@ -485,7 +485,7 @@ async function main(): Promise<void> {
   });
 
   commands.register({
-    name: "exit", description: "Exit mini-dsh gracefully",
+    name: "exit", description: "Exit pydsh gracefully",
     handler: () => { tui.stop(); acp.stop(); process.exit(0); },
   });
 

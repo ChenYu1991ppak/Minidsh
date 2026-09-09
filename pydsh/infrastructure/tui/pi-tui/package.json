@@ -2,7 +2,7 @@
   "name": "pydsh-pi-tui",
   "version": "0.1.0",
   "private": true,
-  "description": "pi-tui terminal frontend for mini-dsh (ACP client)",
+  "description": "pi-tui terminal frontend for pydsh (ACP client)",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

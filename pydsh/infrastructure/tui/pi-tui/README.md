@@ -1,6 +1,6 @@
-# mini-dsh pi-tui 前端
+# pydsh pi-tui 前端
 
-pi-tui 终端前端，经 ACP 协议驱动 mini-dsh agent。生态选型说明见
+pi-tui 终端前端，经 ACP 协议驱动 pydsh agent。生态选型说明见
 [`../../../../docs/pi-tui.md`](../../../../docs/pi-tui.md)。
 
 ## 运行

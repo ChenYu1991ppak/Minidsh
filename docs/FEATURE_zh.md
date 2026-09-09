@@ -1,4 +1,4 @@
-# mini-dsh v1 版本特性
+# pydsh v1 版本特性
 
 [English](FEATURE.md) | 中文
 

@@ -1,8 +1,8 @@
-# mini-dsh Construction Principles & Conventions
+# pydsh Construction Principles & Conventions
 
 English | [中文](PRINCIPLES_zh.md)
 
-> This is the **rulebook** for mini-dsh: check here first, then modify the code.
+> This is the **rulebook** for pydsh: check here first, then modify the code.
 > Every principle originates from a landed implementation, not an unrealized ideal.
 > Deviations from the official version are marked `[教学简化]` (teaching simplification) or `[偏离]` (deviation) in both code comments and this document.
 
@@ -10,7 +10,7 @@ English | [中文](PRINCIPLES_zh.md)
 
 ## 1. One-line Positioning
 
-**mini-dsh is an engineering skeleton that faithfully reproduces DeepSeek Harness (dsh) in Python**:
+**pydsh is an engineering skeleton that faithfully reproduces DeepSeek Harness (dsh) in Python**:
 powered by the Cordis "everything is a plugin" container, it strings together agent-loop / tools / skills / subagent /
 session event stream / LLM adaptation / compaction, achieving runnable, observable, and traceable.
 

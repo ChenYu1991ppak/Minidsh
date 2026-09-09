@@ -4,11 +4,11 @@
 
 ## 为什么选择 pi-tui
 
-mini-dsh 以 pi-tui 作为 TUI 前端：
+pydsh 以 pi-tui 作为 TUI 前端：
 
 | 前端 | 技术栈 | 形态 | 适用场景 |
 |---|---|---|---|
-| mini-dsh TUI | TypeScript + `@earendil-works/pi-tui` | 独立 Node.js 进程, ACP 协议 | 对齐官方 dsh-tui 生态、软件开发终端 |
+| pydsh TUI | TypeScript + `@earendil-works/pi-tui` | 独立 Node.js 进程, ACP 协议 | 对齐官方 dsh-tui 生态、软件开发终端 |
 
 ## 决策依据
 
@@ -38,7 +38,7 @@ mini-dsh 以 pi-tui 作为 TUI 前端：
 ├─────────────────────────────────────────────────────┤
 │ ACP JSON-RPC stdio (ndjson, 每行一个 JSON 对象)       │
 ├─────────────────────────────────────────────────────┤
-│ mini-dsh Python 后端                                  │
+│ pydsh Python 后端                                  │
 │  ├─ acp-server  ── 接收 JSON-RPC, 驱动 agent loop    │
 │  ├─ agent-loop  ── ReactLoopAgent                    │
 │  └─ session/llm/tools ── 内核能力                     │
@@ -72,7 +72,7 @@ pi-tui 前端目前无自动测试（需真实 TTY 环境）。Python 侧 ACP �
 
 ## 与官方 dsh-tui 的渲染对比
 
-| 维度 | 官方 dsh-tui（已删） | mini-dsh pi-tui 前端 |
+| 维度 | 官方 dsh-tui（已删） | pydsh pi-tui 前端 |
 |---|---|---|
 | 转录模型 | 单条有序 timeline（append-origin） | ✅ 同样的单条有序 `items`，工具卡片在消息之间内联渲染 |
 | 工具卡片 | `ToolCardComponent` 三段折叠（hidden/collapsed/expanded） | ✅ 同样的三段折叠（Ctrl+O 循环） |

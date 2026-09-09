@@ -1,4 +1,4 @@
-# mini-dsh
+# pydsh
 
 [English](README.md) | 中文
 
@@ -17,9 +17,9 @@
 
 ## 项目描述
 
-mini-dsh 是官方 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness)（dsh）的 Python 教学复刻。官方 dsh 是一个 TypeScript 编写的通用 AI agent 框架：以 Cordis 插件容器为内核，把 agent 的所有能力——会话、模型调用、工具执行、技能、子代理、上下文压缩、token 计量、审批、Web 检索——都实现为**可插拔的插件**，通过 bundle/profile 声明式装配。
+pydsh 是官方 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness)（dsh）的 Python 教学复刻。官方 dsh 是一个 TypeScript 编写的通用 AI agent 框架：以 Cordis 插件容器为内核，把 agent 的所有能力——会话、模型调用、工具执行、技能、子代理、上下文压缩、token 计量、审批、Web 检索——都实现为**可插拔的插件**，通过 bundle/profile 声明式装配。
 
-mini-dsh 忠实复刻了这一架构：
+pydsh 忠实复刻了这一架构：
 
 - **内核**：自研 `cordis/` 插件容器（Context/Fiber/Service/事件派发/四形态归一），约 400 行同步单线程内核，等价官方 `@deepseek-ai/cordis`
 - **能力三角色**：每个能力拆成「定义（纯契约）/ 提供方（构造即注册）/ 消费方（写工具注册表）」三层，seam 可替换
@@ -29,7 +29,7 @@ mini-dsh 忠实复刻了这一架构：
 - **pi-tui 终端前端**：TypeScript + `@earendil-works/pi-tui`，独立 Node.js 进程经 ACP JSON-RPC stdio 协议通信，对齐官方 dsh-tui
 - **真实 token 计量**：provider 回传的 usage（非估算）经 tokenMeter 锚点流转到前端显示
 
-相比官方（TypeScript + 40+ 包），mini-dsh 做了**最小化裁剪**：单仓库单包、同步内核、教学版事件面，但保留全部核心机制形态。所有偏离处标 `[教学简化]`，所有对齐处标 `↔ 官方源码位置`。
+相比官方（TypeScript + 40+ 包），pydsh 做了**最小化裁剪**：单仓库单包、同步内核、教学版事件面，但保留全部核心机制形态。所有偏离处标 `[教学简化]`，所有对齐处标 `↔ 官方源码位置`。
 
 ## 当前特性
 
@@ -48,7 +48,7 @@ mini-dsh 忠实复刻了这一架构：
 ## 项目结构
 
 ```
-mini-dsh/
+pydsh/
 ├── Makefile                          # 任务自动化
 ├── scripts/
 │   └── setup.sh                      # 一键安装脚本
